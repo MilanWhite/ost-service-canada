@@ -1,0 +1,229 @@
+import { useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import {
+    createBrowserRouter,
+    RouterProvider,
+    useLocation,
+    Outlet,
+} from "react-router-dom";
+
+import { Authenticator } from "@aws-amplify/ui-react";
+import { Amplify } from "aws-amplify";
+import config from "./amplifyconfiguration";
+
+import { LoginPage } from "../pages/general/AuthPages/LoginPage.tsx";
+import { ResetPasswordPage } from "../pages/general/AuthPages/ResetPasswordPage.tsx";
+
+import { HomePage } from "../pages/general/HomePage.tsx";
+import { AboutPage } from "../pages/general/AboutPage.tsx";
+import { NotFoundPage } from "../pages/general/NotFoundPage.tsx";
+import { ContactPage } from "../pages/general/ContactPage.tsx";
+// import { Callback } from "../pages/general/Callback.tsx";
+
+import { AdminDashboard } from "../pages/admin/AdminDashboard.tsx";
+import { AdminClientManager } from "../pages/admin/AdminClientManager.tsx";
+import { AdminViewClientVehicles } from "../pages/admin/AdminViewClientVehicles.tsx";
+import { AdminViewClientSingularVehicle } from "../pages/admin/AdminViewClientSingularVehicle.tsx";
+
+import { RegularUserDashboard } from "../pages/regular_user/RegularUserDashboard.tsx";
+import { RegularUserVehicles } from "../pages/regular_user/RegularUserVehicles.tsx";
+import { RegularUserViewUserSingularVehicle } from "../pages/regular_user/RegularUserViewUserSingularVehicle.tsx";
+
+import { PublicRoute } from "../routers/PublicRoute.tsx";
+import { RegularRoute } from "../routers/RegularRoute.tsx";
+import { AdminRoute } from "../routers/AdminRoute.tsx";
+
+import "./index.css";
+
+import { URLS } from "./config/navigation.ts";
+
+import { abortAllRequests } from "../services/api-client.ts";
+
+import "./i18.ts";
+
+import Snowfall from "react-snowfall";
+
+Amplify.configure(config);
+
+function RootLayout() {
+    const location = useLocation();
+    useEffect(() => {
+        abortAllRequests();
+    }, [location]);
+    return <Outlet />;
+}
+
+function AutoSnowfall() {
+    const month = new Date().getMonth();
+    const isWinter = month === 11 || month === 0 || month === 1;
+
+    if (!isWinter) return null;
+
+    return (
+        <>
+            <Snowfall
+                style={{
+                    position: "fixed",
+                    width: "100vw",
+                    height: "100vh",
+                    zIndex: 1000,
+                }}
+                color="white"
+                snowflakeCount={50}
+            />
+        </>
+    );
+}
+
+const router = createBrowserRouter([
+    {
+        element: <RootLayout />,
+        children: [
+            // Public (unauthenticated) routes
+
+            {
+                path: URLS.root,
+                element: (
+                    <PublicRoute>
+                        <AutoSnowfall/>
+                        <HomePage />
+                    </PublicRoute>
+                ),
+            },
+            {
+                path: URLS.about,
+                element: (
+                    <PublicRoute>
+                        <AutoSnowfall/>
+                        <AboutPage />
+                    </PublicRoute>
+                ),
+            },
+            {
+                path: URLS.contact,
+                element: (
+                    <PublicRoute>
+                        <AutoSnowfall/>
+                        <ContactPage />
+                    </PublicRoute>
+                ),
+            },
+
+            {
+                path: URLS.login,
+                element: (
+                    <PublicRoute>
+                        <AutoSnowfall/>
+                        <LoginPage />
+                    </PublicRoute>
+                ),
+            },
+
+            {
+                path: URLS.resetPassword,
+                element: (
+                    <PublicRoute>
+                        <AutoSnowfall/>
+                        <ResetPasswordPage />
+                    </PublicRoute>
+                ),
+            },
+
+            // {
+            //     path: URLS.authCallback,
+            //     element: (
+            //         <PublicRoute>
+            //             <Callback />
+            //         </PublicRoute>
+            //     ),
+            // },
+
+            // Regular user routes
+            {
+                path: URLS.home,
+                element: (
+                    <RegularRoute>
+                        <RegularUserDashboard />
+                    </RegularRoute>
+                ),
+            },
+
+            {
+                path: URLS.vehicles,
+                element: (
+                    <RegularRoute>
+                        <RegularUserVehicles />
+                    </RegularRoute>
+                ),
+            },
+
+            {
+                path: URLS.regularUserViewUserSingularVehicle(":vehicle_id"),
+                element: (
+                    <RegularRoute>
+                        <RegularUserViewUserSingularVehicle />
+                    </RegularRoute>
+                ),
+            },
+
+            // Admin-only routes
+            {
+                path: URLS.adminHome,
+                element: (
+                    <AdminRoute>
+                        <AdminDashboard />
+                    </AdminRoute>
+                ),
+            },
+
+            {
+                path: URLS.adminClientManager,
+                element: (
+                    <AdminRoute>
+                        <AdminClientManager />
+                    </AdminRoute>
+                ),
+            },
+
+            {
+                path: URLS.adminViewClientVehicles(":sub"),
+                element: (
+                    <AdminRoute>
+                        <AdminViewClientVehicles />
+                    </AdminRoute>
+                ),
+            },
+
+            {
+                path: URLS.adminViewClientSingularVehicle(
+                    ":sub",
+                    ":vehicle_id"
+                ),
+                element: (
+                    <AdminRoute>
+                        <AdminViewClientSingularVehicle />
+                    </AdminRoute>
+                ),
+            },
+
+            // 404
+            {
+                path: "*",
+                element: (
+                    <>
+                        <AutoSnowfall/>
+                        <NotFoundPage />
+                    </>
+                ),
+            },
+        ],
+    },
+]);
+
+createRoot(document.getElementById("root")!).render(
+    <>
+        <Authenticator.Provider>
+            <RouterProvider router={router} />
+        </Authenticator.Provider>
+    </>
+);

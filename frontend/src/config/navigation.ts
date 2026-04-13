@@ -2,6 +2,7 @@ export const URLS = {
     // Social links
     facebook: "https://www.facebook.com/ostservic/",
     linkedin: "https://www.linkedin.com/company/ost-service/",
+    georgiaSite: "https://ostservicecanada.ge/",
 
     // login
     login: "/login",

@@ -98,6 +98,14 @@ i18n.use(LanguageDetector)
                             "© 2019-2026 OST SERVICE A&A LTD. All rights reserved.",
                     },
 
+                    Announcement: {
+                        georgia_LLC: "OST Service Canada LLC",
+                        georgia_open:
+                            "We have now opened operations in Georgia!",
+                        georgia_banner_dismiss:
+                            "Dismiss"
+                    },
+
                     // CONTACT PAGE
                     ContactPage: {
                         //  Headline & blurb
@@ -490,6 +498,14 @@ i18n.use(LanguageDetector)
                         //  Footer
                         footer_copyright:
                             "© 2019-2026 OST SERVICE A&A LTD. Все права защищены.",
+                    },
+
+                    Announcement: {
+                        georgia_LLC: "OST Service Canada LLC",
+                        georgia_open:
+                            "Мы уже начали работу в Грузии!",
+                        georgia_banner_dismiss:
+                            "Закрыть"
                     },
 
                     // CONTACT PAGE
@@ -886,6 +902,14 @@ i18n.use(LanguageDetector)
                         //  Footer
                         footer_copyright:
                             "© 2019–2026 OST SERVICE A&A LTD. Усі права захищено.",
+                    },
+
+                    Announcement: {
+                        georgia_LLC: "OST Service Canada LLC",
+                        georgia_open:
+                            "Ми вже розпочали роботу в Грузії!",
+                        georgia_banner_dismiss:
+                            "Закрити"
                     },
 
                     // CONTACT PAGE

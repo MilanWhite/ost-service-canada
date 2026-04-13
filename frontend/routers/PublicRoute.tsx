@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CenteredSpinner from "../components/CenteredSpinner";
+import PublicAnnouncementBanner from "../components/PublicAnnouncementBanner";
 import { URLS } from "../src/config/navigation";
 import { fetchAuthSession } from "aws-amplify/auth";
 
@@ -8,11 +9,32 @@ interface PublicProps {
     children: ReactNode;
 }
 
+const PUBLIC_ANNOUNCEMENT_DISMISSED_KEY = "public-announcement-dismissed";
+
 export function PublicRoute({ children }: PublicProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(true);
     const [allowed, setAllowed] = useState(false);
+    const [announcementDismissed, setAnnouncementDismissed] = useState(() => {
+        if (typeof window === "undefined") return false;
+
+        return (
+            window.localStorage.getItem(PUBLIC_ANNOUNCEMENT_DISMISSED_KEY) ===
+            "true"
+        );
+    });
+
+    const handleDismissAnnouncement = () => {
+        setAnnouncementDismissed(true);
+
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem(
+                PUBLIC_ANNOUNCEMENT_DISMISSED_KEY,
+                "true"
+            );
+        }
+    };
 
     useEffect(() => {
         async function checkSession() {
@@ -37,5 +59,18 @@ export function PublicRoute({ children }: PublicProps) {
     }, [navigate, location.pathname]);
 
     if (loading) return <CenteredSpinner />;
-    return <>{allowed ? children : null}</>;
+    return (
+        <>
+            {allowed ? (
+                <>
+                    {!announcementDismissed ? (
+                        <PublicAnnouncementBanner
+                            onDismiss={handleDismissAnnouncement}
+                        />
+                    ) : null}
+                    {children}
+                </>
+            ) : null}
+        </>
+    );
 }

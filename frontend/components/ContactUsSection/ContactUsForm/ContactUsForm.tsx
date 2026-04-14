@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import RoundedButton from "../../RoundedButton";
 
 import { useForm } from "react-hook-form";
@@ -42,8 +42,24 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const getContactLanguageFromSiteLanguage = (
+    language?: string,
+): FormData["language"] => {
+    switch (language?.split("-")[0]) {
+        case "uk":
+            return "ukrainian";
+        case "ru":
+            return "russian";
+        default:
+            return "english";
+    }
+};
+
 const ContactUsForm = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const defaultLanguage = getContactLanguageFromSiteLanguage(
+        i18n.resolvedLanguage ?? i18n.language,
+    );
 
     const { sendContactMessage, isContactLoading, contactError } =
         useContactForm();
@@ -59,17 +75,44 @@ const ContactUsForm = () => {
             language: data.language,
         };
 
-        await sendContactMessage(contactInfo, reset, setShowSuccess);
+        await sendContactMessage(
+            contactInfo,
+            () =>
+                reset({
+                    firstName: "",
+                    lastName: "",
+                    email: "",
+                    phoneNumber: "",
+                    message: "",
+                    language: data.language,
+                }),
+            setShowSuccess,
+        );
     };
 
     const {
         register,
         handleSubmit,
         reset,
-        formState: { errors },
+        setValue,
+        formState: { dirtyFields, errors },
     } = useForm<FormData>({
         resolver: zodResolver(schema),
+        defaultValues: {
+            firstName: "",
+            lastName: "",
+            email: "",
+            phoneNumber: "",
+            message: "",
+            language: defaultLanguage,
+        },
     });
+
+    useEffect(() => {
+        if (dirtyFields.language) return;
+
+        setValue("language", defaultLanguage, { shouldDirty: false });
+    }, [defaultLanguage, dirtyFields.language, setValue]);
 
     return (
         <>

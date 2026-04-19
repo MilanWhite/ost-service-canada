@@ -13,7 +13,7 @@ const PublicAnnouncementBanner = ({
     const { t } = useTranslation();
 
     return (
-        <div className="relative flex items-center gap-x-6 bg-primary-dark px-6 py-2.5 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10 sm:px-3.5 sm:before:flex-1">
+        <div className="relative flex items-center gap-x-6 bg-primary/75 px-6 py-2.5 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10 sm:px-3.5 sm:before:flex-1">
             <p className="text-sm/6 text-white">
                 <a
                     href={URLS.georgiaSite}

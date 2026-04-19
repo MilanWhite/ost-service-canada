@@ -61,6 +61,10 @@ i18n.use(LanguageDetector)
                             "Access licensed dealer auctions from anywhere in the world. We handle the paperwork, shipping, and customs – start to finish.",
                         landing_cta_button: "Get a Free Quote",
 
+                        georgia_title: "OST Service Georgia",
+                        georgia_text:
+                            "OST Service Canada now has a dedicated office in Tbilisi, giving customers in Georgia a direct local point of contact for vehicle shipping, auction support, and day-to-day communication.",
+                        georgia_visit_site: "Visit OST Service Georgia",
                         //  How-it-works section
                         how_it_works_heading: "How It Works",
                         how_it_works_subheading: "Step by step.",
@@ -464,6 +468,10 @@ i18n.use(LanguageDetector)
                             "Получите доступ к аукционам официальных дилеров из любой точки мира. Мы берём на себя все документы, доставку и таможенное оформление - от начала до конца.",
                         landing_cta_button: "Получить бесплатную консультацию",
 
+                        georgia_title: "OST Service Грузия",
+                        georgia_text:
+                            "У OST Service Canada теперь есть отдельный офис в Тбилиси, поэтому клиенты в Грузии имеют прямой местный контактный пункт по вопросам доставки автомобилей, поддержки на аукционах и повседневной коммуникации.",
+                        georgia_visit_site: "Перейти на сайт OST Service Georgia",
                         //  How-it-works section
                         how_it_works_heading: "Как это работает",
                         how_it_works_subheading: "Шаг за шагом.",
@@ -867,6 +875,10 @@ i18n.use(LanguageDetector)
                             "Отримайте доступ до аукціонів офіційних дилерів з будь-якої точки світу. Ми беремо на себе документи, доставку та митне оформлення - від початку до кінця.",
                         landing_cta_button: "Отримати безкоштовну консультацію",
 
+                        georgia_title: "OST Service Грузія",
+                        georgia_text:
+                            "OST Service Canada тепер має окремий офіс у Тбілісі, що надає клієнтам у Грузії прямий місцевий контактний пункт для доставки автомобілів, супроводу на аукціонах і щоденної комунікації.",
+                        georgia_visit_site: "Перейти на сайт OST Service Georgia",
                         //  How-it-works section
                         how_it_works_heading: "Як це працює",
                         how_it_works_subheading: "Крок за кроком.",

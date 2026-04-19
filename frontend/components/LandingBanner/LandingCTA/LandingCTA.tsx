@@ -7,7 +7,7 @@ const LandingCTA = () => {
     const { t } = useTranslation();
 
     return (
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 transform mx-auto max-w-7xl px-6 py-24 sm:py-8 lg:px-8">
+        <div className="landing-cta-mobile-landscape mx-auto w-full max-w-7xl px-6 py-24 sm:py-8 lg:px-8">
             <h2 className="max-w-2xl text-4xl font-semibold text-balance text-white sm:text-5xl">
                 {t("HomePage.landing_cta_title")}
             </h2>

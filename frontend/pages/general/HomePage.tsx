@@ -1,5 +1,6 @@
 import Navbar from "../../components/Navbar";
 import LandingBanner from "../../components/LandingBanner";
+import GeorgiaSection from "../../components/GeorgiaSection";
 import HowItWorks from "../../components/HowItWorks";
 import WhyChooseUs from "../../components/WhyChooseUs";
 import InfoSectionRightImage from "../../components/InfoSectionRightImage";
@@ -12,6 +13,7 @@ export function HomePage() {
         <>
             <Navbar />
             <LandingBanner />
+            <GeorgiaSection />
             <HowItWorks />
             <WhyChooseUs />
             <AuctionList />

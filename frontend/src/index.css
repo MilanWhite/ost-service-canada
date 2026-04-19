@@ -20,3 +20,10 @@ body {
 .max-w-8xl {
   max-width: var(--container-8xl);
 }
+
+@media (max-width: 1023px) and (orientation: landscape) {
+    .landing-cta-mobile-landscape {
+        padding-top: 4rem;
+        padding-bottom: 4rem;
+    }
+}

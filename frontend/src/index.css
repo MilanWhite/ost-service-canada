@@ -7,6 +7,15 @@
     --color-primary-hover: #3385c1;
     --color-primary-100: #cce0ef;
 
+    --color-status-delivered-bg: #dcfce7;
+    --color-status-delivered-text: #166534;
+    --color-status-delivered-border: #86efac;
+    --color-status-delivered-card: #c9e7ca;
+    --color-status-not-delivered-bg: #bfdbfe;
+    --color-status-not-delivered-text: #1e3a8a;
+    --color-status-not-delivered-border: #60a5fa;
+    --color-status-not-delivered-card: #dbeafe;
+
     /* --color-secondary: #1e6c93; */
     --color-secondary: #D32F2F;
 
@@ -15,6 +24,31 @@
 
 body {
     overflow-x: hidden;
+}
+
+.thumbnail-scrollbar {
+    scrollbar-color: #111827 transparent;
+    scrollbar-width: thin;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar {
+    height: 12px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-thumb {
+    background: #111827;
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #374151;
 }
 
 .max-w-8xl {

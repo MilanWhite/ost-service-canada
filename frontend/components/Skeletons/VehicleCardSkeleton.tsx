@@ -10,14 +10,14 @@ export default function VehicleCardSkeleton({ appear_size }: Props) {
                 <h2 className="sr-only">Vehicle info skeleton</h2>
 
                 <div className="sm:relative border-t border-b border-gray-200 bg-white shadow-xs sm:rounded-lg sm:border animate-pulse">
-                    <div className="px-4 py-6 sm:px-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:p-8">
+                    <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 lg:grid lg:grid-cols-12 lg:gap-x-6 lg:p-5">
                         {/* ───────────────── LEFT: image + basic info ───────────────── */}
                         <div className="sm:flex lg:col-span-5">
                             {/* square image placeholder */}
-                            <div className="aspect-square w-full shrink-0 rounded-lg bg-gray-200 sm:size-40" />
+                            <div className="aspect-square w-full shrink-0 rounded-lg bg-gray-200 sm:size-32" />
 
                             {/* name + prices */}
-                            <div className="mt-6 sm:mt-0 sm:ml-6 flex-1 space-y-3">
+                            <div className="mt-3 sm:mt-0 sm:ml-5 flex-1 space-y-3">
                                 <div className="h-4 w-3/4 bg-gray-200 rounded" />{" "}
                                 {/* vehicle name */}
                                 <div className="h-3 w-1/2 bg-gray-200 rounded" />{" "}
@@ -28,7 +28,7 @@ export default function VehicleCardSkeleton({ appear_size }: Props) {
                         </div>
 
                         {/* ───────────────── RIGHT: details ───────────────── */}
-                        <div className="mt-6 lg:col-span-7 lg:mt-0">
+                        <div className="mt-5 lg:col-span-7 lg:mt-0 lg:pr-36">
                             <dl className="grid grid-cols-1 gap-x-6 text-sm">
                                 <div className="space-y-4 lg:flex lg:space-x-10">
                                     {/* Location / Auction / Lot # */}
@@ -60,7 +60,7 @@ export default function VehicleCardSkeleton({ appear_size }: Props) {
                     </div>
 
                     {/* bottom‑right “View” button placeholder */}
-                    <div className="sm:absolute right-8 bottom-8">
+                    <div className="px-4 pb-4 sm:absolute sm:right-5 sm:bottom-5 sm:px-0 sm:pb-0">
                         <div className="h-8 w-24 bg-gray-200 rounded" />
                     </div>
                 </div>

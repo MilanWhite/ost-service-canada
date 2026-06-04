@@ -11,10 +11,10 @@ const Dropdown = ({ title, options, onChange }: Props) => {
     const { t } = useTranslation();
 
     return (
-        <div className=" w-full">
+        <div className="w-full min-w-0">
             <label
                 htmlFor={title}
-                className="block text-sm/6 font-medium text-gray-900"
+                className="block whitespace-nowrap text-sm/6 font-medium text-gray-900"
             >
                 {t(title as string)}
             </label>

@@ -13,13 +13,22 @@ import { useCreateVehicle } from "../../contexts/CreateVehicleContext";
 import AdminCreateVehicleDialog from "../../components/AdminCreateVehicleDialog";
 import SuccessBanner from "../../components/SuccessBanner";
 import { useState } from "react";
-import { VehicleFilterField } from "../../src/types/types";
+import {
+    VehicleFilterField,
+    VehicleStatusFilter,
+} from "../../src/types/types";
 
-import { VehicleFilterChoices } from "../../src/types/types";
+import {
+    VehicleFilterChoices,
+    VehicleStatusFilterChoices,
+} from "../../src/types/types";
 import { useTranslation } from "react-i18next";
 import VehicleCardSkeleton from "../Skeletons/VehicleCardSkeleton";
 
 import UserBannerSkeleton from "../Skeletons/UserBannerSkeleton";
+import BackButton from "../BackButton";
+import { URLS } from "../../src/config/navigation";
+import { VEHICLES_PER_PAGE } from "../../src/config/pagination";
 
 const AdminViewUserVehicles = () => {
     const { t } = useTranslation();
@@ -32,7 +41,9 @@ const AdminViewUserVehicles = () => {
 
     const [vehicleSearch, setVehicleSearch] = useState<string>("");
     const [vehicleFilterBy, setVehicleFilterBy] =
-        useState<VehicleFilterField>("vehicle_name");
+        useState<VehicleFilterField>("default");
+    const [vehicleStatusFilter, setVehicleStatusFilter] =
+        useState<VehicleStatusFilter>("both");
 
     const {
         vehicles,
@@ -41,7 +52,11 @@ const AdminViewUserVehicles = () => {
         vehiclesError,
         setPage,
         vehicleRefetch,
-    } = useGetVehicles(sub!, 10, { vehicleSearch, vehicleFilterBy });
+    } = useGetVehicles(sub!, VEHICLES_PER_PAGE, {
+        vehicleSearch,
+        vehicleFilterBy,
+        vehicleStatusFilter,
+    });
 
     if (!sub) {
         return <Navigate to="/404" replace />;
@@ -69,7 +84,24 @@ const AdminViewUserVehicles = () => {
             )}
             {userError && <ErrorBanner>{t(userError as string)}</ErrorBanner>}
 
-            {user ? <UserBanner user={user} /> : <UserBannerSkeleton />}
+            {user ? (
+                <>
+                    <div className="mb-3 flex h-10 items-center gap-x-3">
+                        <BackButton href={URLS.adminClientManager} compact />
+                        <div className="border-l border-gray-200 pl-3">
+                            <p className="text-xs font-medium text-gray-500">
+                                {t("AuthenticatedView.back_to")}
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900">
+                                {t("AuthenticatedView.client_list")}
+                            </p>
+                        </div>
+                    </div>
+                    <UserBanner user={user} />
+                </>
+            ) : (
+                <UserBannerSkeleton />
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end">
                 <div className="flex flex-col sm:justify-end sm:items-end mt-2 sm:mt-0">
@@ -95,7 +127,7 @@ const AdminViewUserVehicles = () => {
                         )}
                     </div>
                 </div>
-                <div className="mt-4 flex md:mt-0 md:ml-auto space-x-4">
+                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(5rem,0.55fr)_minmax(5rem,0.55fr)] gap-2 sm:flex sm:space-x-4 sm:gap-0 md:mt-0 md:ml-auto">
                     <SearchBar setSearch={setVehicleSearch} />
                     <Dropdown
                         title={"AuthenticatedView.filter_by"}
@@ -103,6 +135,15 @@ const AdminViewUserVehicles = () => {
                         onChange={(e) =>
                             setVehicleFilterBy(
                                 e.target.value as VehicleFilterField
+                            )
+                        }
+                    />
+                    <Dropdown
+                        title={"AuthenticatedView.status"}
+                        options={VehicleStatusFilterChoices}
+                        onChange={(e) =>
+                            setVehicleStatusFilter(
+                                e.target.value as VehicleStatusFilter
                             )
                         }
                     />

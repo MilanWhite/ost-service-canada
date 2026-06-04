@@ -289,16 +289,22 @@ i18n.use(LanguageDetector)
                         show_results_for: "Showing results for ",
                         filtered_by: "filtered by",
                         filter_by: "Filter By",
+                        default: "Default",
+                        both: "Both",
 
                         // Vehicle form
                         add_vehicle: "Add Vehicle",
                         add_vehicle_description:
                             "This vehicle will be added to this user's account.",
+                        upload_media: "Upload Media",
+                        upload_media_description:
+                            "Images, videos, and ZIP/archive files are supported.",
                         upload_images: "Upload Images",
                         edit_images: "Edit Images",
                         upload_videos: "Upload Videos",
 
                         thumbnail: "Thumbnail",
+                        video: "Video",
 
                         // General info
                         general_info: "General Info",
@@ -315,20 +321,39 @@ i18n.use(LanguageDetector)
                         delivery_address: "Delivery Address",
                         port_of_origin: "Port of Origin",
                         port_of_destination: "Port of Destination",
-                        container_number: "Container Number",
+                        container_number: "Container #",
                         receiver_id: "Receiver Id",
 
                         vin: "VIN",
                         powertrain: "Powertrain",
                         model: "Model",
                         color: "Color",
+                        year: "Year",
+                        make: "Make",
+                        destination: "Destination",
+                        status: "Status",
+                        date_created: "Date created",
+                        vehicle_owner: "Vehicle owner",
+                        back_to: "Back to",
+                        back_to_my_vehicles: "Back to my vehicles",
+                        back_to_client_vehicles: "Back to client vehicles",
+                        photos: "Photos",
+                        download_images: "Download images",
+                        downloading: "Downloading",
+                        none: "None",
+                        choose_file: "Choose file",
+                        removed_on_save: "Removed on save",
+                        undo_remove: "Undo remove",
 
                         // Documents
                         documents: "Documents",
                         bill_of_sale: "Bill of Sale",
                         title_document: "Title Document",
+                        copy_of_title: "Copy of Title",
                         bill_of_lading: "Bill of Lading",
                         swb_release_document: "Sea Waybill Release Document",
+                        sea_waybill_release: "Sea Waybill Release",
+                        admin_card_sea_waybill_release_short: "SWB Release",
                         view_bill_of_sale: "View Bill of Sale",
                         view_title_document: "View Title Document",
                         view_bill_of_lading: "View Bill of Lading",
@@ -434,6 +459,8 @@ i18n.use(LanguageDetector)
                                 "Failed to delete user. Please try again later.",
                             failed_to_decode_vin:
                                 "Failed to decode VIN. Please try again later.",
+                            failed_to_download_images:
+                                "Failed to download images. Please try again later.",
 
                             no_images_available: "No images available",
 
@@ -695,16 +722,22 @@ i18n.use(LanguageDetector)
                         show_results_for: "Показаны результаты по ",
                         filtered_by: "отфильтровано по",
                         filter_by: "Фильтровать по",
+                        default: "По умолчанию",
+                        both: "Все",
 
                         // Vehicle form
                         add_vehicle: "Добавить автомобиль",
                         add_vehicle_description:
                             "Этот автомобиль будет добавлен в аккаунт выбранного пользователя.",
+                        upload_media: "Загрузить медиа",
+                        upload_media_description:
+                            "Поддерживаются изображения, видео и ZIP-архивы.",
                         upload_images: "Загрузить изображения",
                         edit_images: "Редактировать изображения",
                         upload_videos: "Загрузить видео",
 
                         thumbnail: "Миниатюра",
+                        video: "Видео",
 
                         // General info
                         general_info: "Общая информация",
@@ -728,13 +761,32 @@ i18n.use(LanguageDetector)
                         powertrain: "Трансмиссия и силовая установка",
                         model: "Модель",
                         color: "Цвет",
+                        year: "Год",
+                        make: "Марка",
+                        destination: "Место назначения",
+                        status: "Статус",
+                        date_created: "Дата создания",
+                        vehicle_owner: "Владелец автомобиля",
+                        back_to: "Назад к",
+                        back_to_my_vehicles: "Назад к моим авто",
+                        back_to_client_vehicles: "Назад к авто клиента",
+                        photos: "Фото",
+                        download_images: "Скачать фото",
+                        downloading: "Скачивание",
+                        none: "Нет",
+                        choose_file: "Выбрать файл",
+                        removed_on_save: "Будет удалено при сохранении",
+                        undo_remove: "Отменить удаление",
 
                         // Documents
                         documents: "Документы",
                         bill_of_sale: "Договор купли-продажи",
                         title_document: "Свидетельство о праве собственности",
+                        copy_of_title: "Копия свидетельства",
                         bill_of_lading: "Транспортная накладная",
                         swb_release_document: "Документ выдачи морской накладной",
+                        sea_waybill_release: "Выдача морской накладной",
+                        admin_card_sea_waybill_release_short: "Морская накладная",
                         view_bill_of_sale: "Просмотреть договор купли-продажи",
                         view_title_document: "Просмотреть свидетельство",
                         view_bill_of_lading: "Просмотреть транспортную накладную",
@@ -841,6 +893,8 @@ i18n.use(LanguageDetector)
                                 "Не удалось удалить пользователя. Пожалуйста, попробуйте позже.",
                             failed_to_decode_vin:
                                 "Не удалось расшифровать VIN. Пожалуйста, попробуйте позже.",
+                            failed_to_download_images:
+                                "Не удалось скачать фото. Пожалуйста, попробуйте позже.",
 
                             no_images_available: "Изображения недоступны",
 
@@ -1101,16 +1155,22 @@ i18n.use(LanguageDetector)
                         show_results_for: "Результати за запитом ",
                         filtered_by: "відфільтровано за",
                         filter_by: "Фільтрувати за",
+                        default: "За замовчуванням",
+                        both: "Усі",
 
                         // Vehicle form
                         add_vehicle: "Додати авто",
                         add_vehicle_description:
                             "Це авто буде додано до акаунта користувача.",
+                        upload_media: "Завантажити медіа",
+                        upload_media_description:
+                            "Підтримуються зображення, відео та ZIP-архіви.",
                         upload_images: "Завантажити зображення",
                         edit_images: "Редагувати зображення",
                         upload_videos: "Завантажити відео",
 
                         thumbnail: "Мініатюра",
+                        video: "Відео",
 
                         // General info
                         general_info: "Загальна інформація",
@@ -1134,13 +1194,32 @@ i18n.use(LanguageDetector)
                         powertrain: "Трансмісія та силова установка",
                         model: "Модель",
                         color: "Колір",
+                        year: "Рік",
+                        make: "Марка",
+                        destination: "Пункт призначення",
+                        status: "Статус",
+                        date_created: "Дата створення",
+                        vehicle_owner: "Власник авто",
+                        back_to: "Назад до",
+                        back_to_my_vehicles: "Назад до моїх авто",
+                        back_to_client_vehicles: "Назад до авто клієнта",
+                        photos: "Фото",
+                        download_images: "Завантажити фото",
+                        downloading: "Завантаження",
+                        none: "Немає",
+                        choose_file: "Вибрати файл",
+                        removed_on_save: "Буде видалено під час збереження",
+                        undo_remove: "Скасувати видалення",
 
                         // Documents
                         documents: "Документи",
                         bill_of_sale: "Рахунок-фактура",
                         title_document: "Свідоцтво про право власності",
+                        copy_of_title: "Копія свідоцтва",
                         bill_of_lading: "Транспортна накладна",
                         swb_release_document: "Документ видачі морської накладної",
+                        sea_waybill_release: "Видача морської накладної",
+                        admin_card_sea_waybill_release_short: "Морська накладна",
                         view_bill_of_sale: "Переглянути рахунок-фактуру",
                         view_title_document: "Переглянути свідоцтво",
                         view_bill_of_lading: "Переглянути транспортну накладну",
@@ -1247,6 +1326,8 @@ i18n.use(LanguageDetector)
                                 "Не вдалося видалити користувача. Спробуйте пізніше.",
                             failed_to_decode_vin:
                                 "Не вдалося розпізнати VIN. Спробуйте пізніше.",
+                            failed_to_download_images:
+                                "Не вдалося завантажити фото. Спробуйте пізніше.",
 
                             no_images_available: "Зображення недоступні",
 

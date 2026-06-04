@@ -6,11 +6,18 @@ import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/Dropdown";
 
 import { useState } from "react";
-import { VehicleFilterField } from "../../src/types/types";
+import {
+    VehicleFilterField,
+    VehicleStatusFilter,
+} from "../../src/types/types";
 
-import { VehicleFilterChoices } from "../../src/types/types";
+import {
+    VehicleFilterChoices,
+    VehicleStatusFilterChoices,
+} from "../../src/types/types";
 import { useAuthenticator } from "@aws-amplify/ui-react";
 import { useTranslation } from "react-i18next";
+import { VEHICLES_PER_PAGE } from "../../src/config/pagination";
 
 import VehicleCardSkeleton from "../Skeletons/VehicleCardSkeleton";
 
@@ -19,12 +26,18 @@ const UserViewUserVehicles = () => {
 
     const [vehicleSearch, setVehicleSearch] = useState<string>("");
     const [vehicleFilterBy, setVehicleFilterBy] =
-        useState<VehicleFilterField>("vehicle_name");
+        useState<VehicleFilterField>("default");
+    const [vehicleStatusFilter, setVehicleStatusFilter] =
+        useState<VehicleStatusFilter>("both");
 
     const { user } = useAuthenticator((ctx) => [ctx.user]);
 
     const { vehicles, meta, vehiclesLoading, vehiclesError, setPage } =
-        useGetVehicles(user.userId, 10, { vehicleSearch, vehicleFilterBy });
+        useGetVehicles(user.userId, VEHICLES_PER_PAGE, {
+            vehicleSearch,
+            vehicleFilterBy,
+            vehicleStatusFilter,
+        });
 
     return (
         <>
@@ -53,7 +66,7 @@ const UserViewUserVehicles = () => {
                         )}
                     </div>
                 </div>
-                <div className="mt-4 flex md:mt-0 md:ml-auto space-x-4">
+                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(5rem,0.55fr)_minmax(5rem,0.55fr)] gap-2 sm:flex sm:space-x-4 sm:gap-0 md:mt-0 md:ml-auto">
                     <SearchBar setSearch={setVehicleSearch} />
                     <Dropdown
                         title={"AuthenticatedView.filter_by"}
@@ -61,6 +74,15 @@ const UserViewUserVehicles = () => {
                         onChange={(e) =>
                             setVehicleFilterBy(
                                 e.target.value as VehicleFilterField
+                            )
+                        }
+                    />
+                    <Dropdown
+                        title={"AuthenticatedView.status"}
+                        options={VehicleStatusFilterChoices}
+                        onChange={(e) =>
+                            setVehicleStatusFilter(
+                                e.target.value as VehicleStatusFilter
                             )
                         }
                     />

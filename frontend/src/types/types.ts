@@ -1,27 +1,34 @@
 export type VehicleFilterField =
-    | "lot_number"
-    | "auction_name"
-    | "location"
-    | "shipping_status"
-    | "vehicle_name"
+    | "default"
+    | "created_at"
+    | "etd"
+    | "eta"
+    | "vin"
+    | "model_year"
+    | "make"
+    | "model"
     | "container_number"
-    | "port_of_origin"
-    | "port_of_destination"
-    | "delivery_address"
-    | "receiver_id";
+    | "destination";
+
+export type VehicleStatusFilter = "both" | "Delivered" | "Not delivered";
 
 export const VehicleFilterChoices = {
-    vehicle_name: "AuthenticatedView.vehicle_name",
-    lot_number: "AuthenticatedView.lot_number",
-    auction_name: "AuthenticatedView.auction_name",
-    location: "AuthenticatedView.location",
-    shipping_status: "AuthenticatedView.shipping_status",
-
+    default: "AuthenticatedView.default",
+    created_at: "AuthenticatedView.date_created",
+    etd: "ETD",
+    eta: "ETA",
+    vin: "AuthenticatedView.vin",
+    model_year: "AuthenticatedView.year",
+    make: "AuthenticatedView.make",
+    model: "AuthenticatedView.model",
     container_number: "AuthenticatedView.container_number",
-    port_of_origin: "AuthenticatedView.port_of_origin",
-    port_of_destination: "AuthenticatedView.port_of_destination",
-    delivery_address: "AuthenticatedView.delivery_address",
-    receiver_id: "AuthenticatedView.receiver_id",
+    destination: "AuthenticatedView.destination",
+}
+
+export const VehicleStatusFilterChoices = {
+    both: "AuthenticatedView.both",
+    Delivered: "AuthenticatedView.delivered",
+    "Not delivered": "AuthenticatedView.not_delivered",
 }
 
 // export const VehicleFilterChoices = {

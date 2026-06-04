@@ -8,6 +8,8 @@ interface ImportMetaEnv {
     readonly VITE_COGNITO_DOMAIN: string;
     readonly VITE_REDIRECT_SIGN_IN?: string;
     readonly VITE_REDIRECT_SIGN_OUT?: string;
+    readonly VITE_IMAGE_VIEWER_VARIANT?: "enhanced" | "bare";
+    readonly VITE_VEHICLES_PER_PAGE?: string;
 }
 
 interface ImportMeta {

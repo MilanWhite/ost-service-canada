@@ -27,7 +27,7 @@ const SearchBar = ({ setSearch }: Props) => {
     };
 
     return (
-        <div>
+        <div className="w-full min-w-0">
             <label
                 htmlFor="search"
                 className="block text-sm/6 font-medium text-gray-900"
@@ -40,7 +40,7 @@ const SearchBar = ({ setSearch }: Props) => {
                         id="search"
                         name="search"
                         type="text"
-                        className="block min-w-0 grow px-3 py-1.5 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
+                        className="block min-w-0 w-full grow px-3 py-1.5 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                         onChange={(e) => setTerm(e.currentTarget.value)}
                     />
                     <div className="flex py-1.5 pr-1.5">

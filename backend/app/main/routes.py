@@ -1,8 +1,8 @@
 from flask import Blueprint, request
-from sqlalchemy import or_
+from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
-from app.utils import success_response, error_response, get_vehicle_thumbnail_filename, check_sub, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_document
+from app.utils import success_response, error_response, get_vehicle_thumbnail_filename, check_sub, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_document, get_vehicle_documents
 from app.decorators import cognito_auth_required
 
 main_bp = Blueprint('main', __name__)
@@ -21,37 +21,49 @@ def main_get_user_vehicles(sub):
 
         vehicle_search = request.args.get("vehicle_search", "", type=str)
         vehicle_filter_by = request.args.get("vehicle_filter_by", None, type=str)
+        vehicle_status_filter = request.args.get("vehicle_status_filter", "both", type=str)
 
-        vehicles = Vehicle.query.filter_by(cognito_sub=sub).order_by(Vehicle.created_at.desc())
-        # filter vehicels by search
+        vehicles = Vehicle.query.filter_by(cognito_sub=sub).order_by(
+            case((Vehicle.shipping_status == "Not delivered", 0), else_=1),
+            Vehicle.created_at.desc(),
+        )
+
+        if vehicle_status_filter in {"Delivered", "Not delivered"}:
+            vehicles = vehicles.filter(Vehicle.shipping_status == vehicle_status_filter)
+
+        # filter vehicles by search
 
         if vehicle_search:
             # whitelist to avoid injection
             allowed = {
-              "lot_number",
-              "auction_name",
-              "location",
-              "shipping_status",
-              "vehicle_name",
-
+              "created_at",
+              "etd",
+              "eta",
+              "vin",
+              "model_year",
+              "make",
+              "model",
               "container_number",
-              "port_of_origin",
-              "port_of_destination",
-              "delivery_address",
-              "receiver_id",
+              "destination",
             }
 
             if vehicle_filter_by in allowed:
                 col = getattr(Vehicle, vehicle_filter_by)
-                vehicles = vehicles.filter(col.ilike(f"%{vehicle_search}%"))
+                vehicles = vehicles.filter(cast(col, String).ilike(f"%{vehicle_search}%"))
             else:
-                # fallback: global search on vehicle_name + auction_name, for example
+                # Default search covers the visible vehicle-list fields.
                 pattern = f"%{vehicle_search}%"
                 vehicles = vehicles.filter(
                     or_(
-                        Vehicle.vehicle_name.ilike(pattern),
-                        Vehicle.auction_name.ilike(pattern),
-                        Vehicle.location.ilike(pattern),
+                        cast(Vehicle.created_at, String).ilike(pattern),
+                        cast(Vehicle.etd, String).ilike(pattern),
+                        cast(Vehicle.eta, String).ilike(pattern),
+                        Vehicle.vin.ilike(pattern),
+                        Vehicle.model_year.ilike(pattern),
+                        Vehicle.make.ilike(pattern),
+                        Vehicle.model.ilike(pattern),
+                        Vehicle.container_number.ilike(pattern),
+                        Vehicle.destination.ilike(pattern),
                     )
                 )
 
@@ -62,6 +74,7 @@ def main_get_user_vehicles(sub):
 
         for vehicle in vehicles_list:
             vehicle["vehicleThumbnail"], vehicle["vehicleThumbnailMobile"] = get_vehicle_thumbnails(vehicle["cognito_sub"], vehicle["id"])
+            vehicle.update(get_vehicle_documents(vehicle["cognito_sub"], vehicle["id"]))
 
         return success_response({
             "vehicles": vehicles_list,
@@ -127,7 +140,8 @@ def main_get_specific_vehicle(sub,vehicle_id):
 
         vehicle["vehicleImages"], vehicle["vehicleVideos"] = get_all_vehicle_images(sub, vehicle_id, image_order=image_order)
 
-        vehicle["vehicleThumbnail"] = get_vehicle_thumbnail_filename(sub, vehicle_id)
+        vehicle["vehicleThumbnail"], vehicle["vehicleThumbnailMobile"] = get_vehicle_thumbnails(sub, vehicle_id)
+        vehicle["vehicleThumbnailName"] = get_vehicle_thumbnail_filename(sub, vehicle_id)
 
         vehicle["vehicleBillOfSaleDocument"] = get_vehicle_document(sub, vehicle_id, "bill_of_sale_document")
 

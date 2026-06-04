@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import useCreateVehicleForm, {
 
 import useDecodeVin from "../../../hooks/useDecodeVin";
 
-import { XMarkIcon, MagnifyingGlassIcon } from "@heroicons/react/20/solid";
+import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/20/solid";
 
 import ErrorBanner from "../../ErrorBanner";
 import ErrorText from "../../ErrorText";
@@ -17,18 +17,15 @@ import ErrorText from "../../ErrorText";
 import { useCreateVehicle } from "../../../contexts/CreateVehicleContext";
 import { User } from "../../../hooks/interfaces";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+    DOCUMENT_FILE_ACCEPT,
+    isDocumentFile,
+} from "../../../src/config/fileTypes";
 
 import ZipImagePreview from "../../ZipImagePreviewer";
 
 export const createVehicleSchema = z.object({
-    vehicleName: z
-        .string()
-        .trim()
-        .min(1, { message: "AuthenticatedView.Errors.vehicle_name_required" })
-        .max(100, { message: "AuthenticatedView.Errors.exceeded_length" }),
-
     lotNumber: z
         .string()
         .trim()
@@ -93,6 +90,16 @@ export const createVehicleSchema = z.object({
         .toUpperCase()
         .regex(/^[A-HJ-NPR-Z0-9]{17}$/, { message: "AuthenticatedView.Errors.invalid_vin" }),
 
+    modelYear: z
+        .string()
+        .trim()
+        .max(10, { message: "AuthenticatedView.Errors.exceeded_length" }),
+
+    make: z
+        .string()
+        .trim()
+        .max(100, { message: "AuthenticatedView.Errors.exceeded_length" }),
+
     powertrain: z
         .string()
         .trim()
@@ -124,29 +131,28 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
 
     const { closeCreateVehicle } = useCreateVehicle();
 
-    const [billOfSaleDocument, setBillOfSaleDocument] = useState<File | null>(
-        null
-    );
-    const [titleDocument, setTitleDocument] = useState<File | null>(null);
-    const [billOfLadingDocument, setBillOfLadingDocument] =
-        useState<File | null>(null);
-    const [swbReleaseDocument, setSWBReleaseDocument] = useState<File | null>(
-        null
-    );
-
     const [files, setFiles] = useState<File[]>([]);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
-    const [imageError, setImageError] = useState<string | null>(null);
 
     const [videos, setVideos] = useState<File[]>([]);
+    const [documentFileError, setDocumentFileError] = useState<string | null>(
+        null
+    );
+    const [documentFiles, setDocumentFiles] = useState({
+        billOfSaleDocument: null as File | null,
+        titleDocument: null as File | null,
+        billOfLadingDocument: null as File | null,
+        swbReleaseDocument: null as File | null,
+    });
 
     const onSubmit = async (data: FormData) => {
-        if (files.length === 0) {
-            setImageError("AuthenticatedView.Errors.image_required");
+        if (!decodedVin || searchedVin !== data.vin) {
+            setError("vin", {
+                type: "manual",
+                message: "Please search the VIN before creating the vehicle.",
+            });
             return;
         }
-
-        setImageError(null);
 
         const createVehicleInfo: CreateVehicleInfo = {
             lotNumber: data.lotNumber,
@@ -155,7 +161,6 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
             shippingStatus: data.shippingStatus,
             priceDelivery: data.priceDelivery,
             priceShipping: data.priceShipping,
-            vehicleName: data.vehicleName,
 
             deliveryAddress: data.deliveryAddress,
             portOfOrigin: data.portOfOrigin,
@@ -164,19 +169,21 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
             receiverId: data.receiverId,
 
             vin: data.vin,
+            modelYear: data.modelYear,
+            make: data.make,
             powertrain: data.powertrain,
             model: data.model,
             color: data.color,
+            destination: "",
+            etd: "",
+            eta: "",
         };
 
         const createVehicleMedia: CreateVehicleMedia = {
             images: files,
             thumbnail: thumbnail,
             videos: videos,
-            billOfSaleDocument: billOfSaleDocument,
-            titleDocument: titleDocument,
-            billOfLadingDocument: billOfLadingDocument,
-            swbReleaseDocument: swbReleaseDocument,
+            ...documentFiles,
         };
 
         await createVehicle(
@@ -186,65 +193,76 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
         );
     };
 
-    const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const video = e.target.files && e.target.files[0];
-        if (!video) return;
-        setVideos([...videos, video]);
-        e.target.value = "";
-    };
-
-    const handleBillOfSaleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const billOfSale = e.target.files && e.target.files[0];
-        if (!billOfSale) return;
-        setBillOfSaleDocument(billOfSale);
-        e.target.value = "";
-    };
-
-    const handleTitleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const title = e.target.files && e.target.files[0];
-        if (!title) return;
-        setTitleDocument(title);
-        e.target.value = "";
-    };
-
-    const handleBillOfLadingUpload = (
-        e: React.ChangeEvent<HTMLInputElement>
-    ) => {
-        const billOfLading = e.target.files && e.target.files[0];
-        if (!billOfLading) return;
-        setBillOfLadingDocument(billOfLading);
-        e.target.value = "";
-    };
-
-    const handleSWBReleaseUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const swbRelease = e.target.files && e.target.files[0];
-        if (!swbRelease) return;
-        setSWBReleaseDocument(swbRelease);
-        e.target.value = "";
-    };
-
     const {
         register,
         watch,
         setValue,
+        setError,
+        clearErrors,
         handleSubmit,
         formState: { errors },
-    } = useForm({
+    } = useForm<FormData>({
         resolver: zodResolver(createVehicleSchema),
-        defaultValues: { shippingStatus: "Auction" },
+        defaultValues: {
+            lotNumber: "",
+            auctionName: "",
+            location: "",
+            shippingStatus: "Not delivered",
+            priceDelivery: "",
+            priceShipping: "",
+            deliveryAddress: "",
+            portOfOrigin: "",
+            portOfDestination: "",
+            containerNumber: "",
+            receiverId: "",
+            vin: "",
+            modelYear: "",
+            make: "",
+            powertrain: "",
+            model: "",
+            color: "",
+        },
     });
 
     // VIN DECODE LOGIC
     const [vinState, setVinState] = useState<string>("");
-    const watched_vin = watch("vin")
+    const [searchedVin, setSearchedVin] = useState<string | null>(null);
+    const watched_vin = watch("vin");
+    const watchedModelYear = watch("modelYear");
+    const watchedMake = watch("make");
+    const watchedModel = watch("model");
     useEffect(() => {
-        setVinState(watched_vin);
-        console.log(vinState)
-    }, [watched_vin])
+        const normalizedVin = (watched_vin ?? "").trim().toUpperCase();
+        setVinState(normalizedVin);
+
+        if (searchedVin && searchedVin !== normalizedVin) {
+            setSearchedVin(null);
+        }
+    }, [watched_vin, searchedVin]);
 
     const {decodeVin, decodedVin, isDecoding, decodeError} = useDecodeVin()
 
+    const handleDecodeVin = async () => {
+        const normalizedVin = vinState.trim().toUpperCase();
+        setValue("vin", normalizedVin, { shouldValidate: true });
+
+        const wasDecoded = await decodeVin(normalizedVin);
+        setSearchedVin(wasDecoded ? normalizedVin : null);
+
+        if (wasDecoded) {
+            clearErrors("vin");
+        }
+    };
+
     useEffect(() => {
+        const newModelYear = decodedVin?.modelYear
+        if (newModelYear) {
+            setValue('modelYear', newModelYear, { shouldValidate: true });
+        }
+        const newMake = decodedVin?.make
+        if (newMake) {
+            setValue('make', newMake, { shouldValidate: true });
+        }
         const newPowertrain = decodedVin?.powertrain
         if (newPowertrain) {
             setValue('powertrain', newPowertrain, { shouldValidate: true });
@@ -253,16 +271,33 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
         if (newModel) {
             setValue('model', newModel, { shouldValidate: true });
         }
+    }, [decodedVin, setValue])
 
-        const newMake = decodedVin?.make
-        const newModelYear = decodedVin?.modelYear
-        if (newModel && newMake && newModelYear) {
-            setValue('vehicleName', `${newModelYear} ${newMake} ${newModel}`, { shouldValidate: true });
-        }
+    const vehicleTitle = [
+        watchedModelYear,
+        watchedMake,
+        watchedModel,
+        searchedVin,
+    ].filter(Boolean).join(" ");
 
-    console.log(newPowertrain, newModel)
-
-    }, [decodedVin])
+    const documentUploadButtons = [
+        {
+            key: "billOfSaleDocument" as const,
+            label: t("AuthenticatedView.bill_of_sale"),
+        },
+        {
+            key: "titleDocument" as const,
+            label: t("AuthenticatedView.title_document"),
+        },
+        {
+            key: "billOfLadingDocument" as const,
+            label: t("AuthenticatedView.bill_of_lading"),
+        },
+        {
+            key: "swbReleaseDocument" as const,
+            label: t("AuthenticatedView.swb_release_document"),
+        },
+    ];
 
 
 
@@ -271,66 +306,123 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
             <form
                 action="#"
                 method="POST"
-                className="relative px-6 py-6 lg:px-8 lg:pb-12"
+                className="relative px-6 pt-2 pb-6 lg:px-8 lg:pt-2 lg:pb-12"
                 onSubmit={handleSubmit(onSubmit)}
             >
                 {createVehicleError && (
                     <ErrorBanner>{t(createVehicleError as string)}</ErrorBanner>
                 )}
+                {documentFileError && (
+                    <ErrorBanner>{documentFileError}</ErrorBanner>
+                )}
 
                 <div>
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <div>
                             <label className="block mb-1 font-medium">
-                                {t("AuthenticatedView.upload_images")}
+                                {t("AuthenticatedView.upload_media")}
                             </label>
+                            <p className="mb-2 text-sm text-gray-600">
+                                {t(
+                                    "AuthenticatedView.upload_media_description"
+                                )}
+                            </p>
 
                             <ZipImagePreview
                                 files={files}
                                 setFiles={setFiles}
                                 thumbnail={thumbnail}
                                 setThumbnail={setThumbnail}
+                                videos={videos}
+                                setVideos={setVideos}
+                                allowVideos
                             />
-                            <ErrorText>
-                                {imageError && t(imageError as string)}
-                            </ErrorText>
                         </div>
                     </div>
+                </div>
 
-                    <div className="mb-4">
-                        <div>
-                            <label className="block mb-1 font-medium">
-                                {t("AuthenticatedView.upload_videos")}
-                            </label>
-                            <input
-                                type="file"
-                                accept="video/*"
-                                multiple
-                                onChange={handleVideoUpload}
-                                className="block w-full text-sm text-gray-700"
-                            />
-                        </div>
+                <div className="mb-3">
+                    <label className="block mb-2 text-sm font-semibold text-gray-900">
+                        {t("AuthenticatedView.documents")}
+                    </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {documentUploadButtons.map((document) => (
+                            <div
+                                key={document.key}
+                                className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-gray-200 px-2 py-1.5"
+                            >
+                                <div className="min-w-0">
+                                    <p className="truncate text-xs font-medium text-gray-700">
+                                        {document.label}
+                                    </p>
+                                    {documentFiles[document.key] && (
+                                        <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-gray-700">
+                                            <span className="truncate">
+                                                {
+                                                    documentFiles[document.key]
+                                                        ?.name
+                                                }
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setDocumentFiles(
+                                                        (prev) => ({
+                                                            ...prev,
+                                                            [document.key]: null,
+                                                        })
+                                                    )
+                                                }
+                                                className="shrink-0 rounded-full text-red-600 hover:bg-red-100 hover:text-red-700"
+                                                aria-label={`Remove ${document.label}`}
+                                            >
+                                                <XMarkIcon className="size-4" />
+                                            </button>
+                                        </span>
+                                    )}
+                                </div>
+                                <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary-100 px-3 py-1.5 text-xs font-semibold text-primary shadow-xs hover:bg-primary-100/70">
+                                    Choose file
+                                    <input
+                                        type="file"
+                                        accept={DOCUMENT_FILE_ACCEPT}
+                                        className="sr-only"
+                                        onChange={(event) => {
+                                            const file =
+                                                event.target.files?.[0] ?? null;
 
-                        {videos.map((video, index) => (
-                            <div key={index} className="flex mt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setVideos((prev) =>
-                                            prev.filter((_, i) => i !== index)
-                                        );
-                                    }}
-                                    className="cursor-pointer text-red-700"
-                                >
-                                    <XMarkIcon className="w-4" />
-                                </button>
-                                <p className="text-sm text-gray-700">
-                                    {video.name}
-                                </p>
+                                            if (
+                                                file &&
+                                                !isDocumentFile(file)
+                                            ) {
+                                                setDocumentFileError(
+                                                    "Please choose a document file: PDF, Word, Excel, CSV, TXT, RTF, or ODT."
+                                                );
+                                                event.target.value = "";
+                                                return;
+                                            }
+
+                                            setDocumentFileError(null);
+                                            setDocumentFiles((prev) => ({
+                                                ...prev,
+                                                [document.key]: file,
+                                            }));
+                                            event.target.value = "";
+                                        }}
+                                    />
+                                </label>
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {searchedVin && (
+                    <div className="my-3 rounded-md bg-green-50 px-4 py-3">
+                        <p className="text-sm font-medium text-green-900">
+                            {vehicleTitle}
+                        </p>
+                    </div>
+                )}
 
                 <div className="sm:col-span-2">
                     <label
@@ -340,7 +432,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                         {t("AuthenticatedView.vin")}
                     </label>
 
-                    <div className="flex w-full items-start gap-3 mt-2.5">
+                    <div className="mt-1.5 flex w-full items-start gap-3">
                         <input
                             id="vin"
                             type="text"
@@ -351,7 +443,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
 
                         <button
                             type="button"
-                            onClick={async () => {await decodeVin(vinState)}}
+                            onClick={handleDecodeVin}
                             className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:opacity-75 disabled:cursor-not-allowed"
                             disabled={isDecoding}
                         >
@@ -366,534 +458,107 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                         {decodeError && t(decodeError as string)}
                     </ErrorText>
                 </div>
-                <label className="block mt-4 mb-2 font-medium">
-                    {t("AuthenticatedView.general_info")}
-                </label>
-                <div className="mx-auto max-w-xl lg:mr-0 lg:max-w-lg pb-4">
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="vehicleName"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.vehicle_name")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="vehicleName"
-                                    type="vehicleName"
-                                    autoComplete="vehicleName"
-                                    className={`block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.make && decodedVin?.model && decodedVin?.modelYear && "bg-green-50"}`}
-                                    {...register("vehicleName")}
-                                />
-                                <ErrorText>
-                                    {errors.vehicleName &&
-                                        t(errors.vehicleName.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="lotNumber"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.lot_number")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="lotNumber"
-                                    type="lotNumber"
-                                    autoComplete="lotNumber"
-                                    className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
-                                    {...register("lotNumber")}
-                                />
-                                <ErrorText>
-                                    {errors.lotNumber &&
-                                        t(errors.lotNumber.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="auctionName"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.auction_name")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="auctionName"
-                                    type="auctionName"
-                                    autoComplete="auctionName"
-                                    className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
-                                    {...register("auctionName")}
-                                />
-                                <ErrorText>
-                                    {errors.auctionName &&
-                                        t(errors.auctionName.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="location"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.location")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="location"
-                                    type="location"
-                                    autoComplete="location"
-                                    className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
-                                    {...register("location")}
-                                />
-                                <ErrorText>
-                                    {errors.location &&
-                                        t(errors.location.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="shippingStatus"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.shipping_status")}
-                            </label>
-                            <div className="mt-2.5 grid grid-cols-1">
-                                <select
-                                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                    id="shippingStatus"
-                                    {...register("shippingStatus")}
-                                >
-                                    <option value="Auction">
-                                        {t("AuthenticatedView.auction")}
-                                    </option>
-                                    <option value="In transit">
-                                        {t("AuthenticatedView.in_transit")}
-                                    </option>
-                                    <option value="Out for Delivery">
-                                        {t(
-                                            "AuthenticatedView.out_for_delivery"
-                                        )}
-                                    </option>
-                                    <option value="Delivered">
-                                        {t("AuthenticatedView.delivered")}
-                                    </option>
-                                </select>
-                                <ChevronDownIcon
-                                    aria-hidden="true"
-                                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                                />
-                            </div>
-                        </div>
-                        {/* Prices  */}
-                        <div className="sm:col-span-2 mt-4 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-6">
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="priceShipping"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.price_delivery")}
-                                </label>
 
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                            $
-                                        </div>
-                                        <input
-                                            id="priceDelivery"
-                                            type="number"
-                                            autoComplete="priceDelivery"
-                                            placeholder="0.00"
-                                            aria-describedby="price-currency"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("priceDelivery")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.priceDelivery &&
-                                            t(
-                                                errors.priceDelivery
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="priceShipping"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.price_shipping")}
-                                </label>
-
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                            $
-                                        </div>
-                                        <input
-                                            id="priceShipping"
-                                            type="number"
-                                            autoComplete="priceShipping"
-                                            placeholder="0.00"
-                                            aria-describedby="price-currency"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("priceShipping")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.priceShipping &&
-                                            t(
-                                                errors.priceShipping
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="powertrain"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.powertrain")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="powertrain"
-                                    type="powertrain"
-                                    autoComplete="powertrain"
-                                    className={`block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.powertrain && "bg-green-50"}`}
-                                    {...register("powertrain")}
-                                />
-                                <ErrorText>
-                                    {errors.powertrain &&
-                                        t(errors.powertrain.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="model"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.model")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="model"
-                                    type="model"
-                                    autoComplete="model"
-                                    className={`block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.model && "bg-green-50"}`}
-                                    {...register("model")}
-                                />
-                                <ErrorText>
-                                    {errors.model &&
-                                        t(errors.model.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="color"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.color")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="color"
-                                    className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
-                                    {...register("color")}
-                                />
-                                <ErrorText>
-                                    {errors.color &&
-                                        t(errors.color.message as string)}
-                                </ErrorText>
-                            </div>
-                        </div>
-
-                        <label className="block mt-4 mb-2 font-medium">
-                            {t("AuthenticatedView.dispatch_info")}
+                <div className="mt-1 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                    <div>
+                        <label
+                            htmlFor="modelYear"
+                            className="block text-sm/6 font-semibold text-gray-900"
+                        >
+                            Year
                         </label>
-                        <div className="sm:col-span-2">
-                            <label
-                                htmlFor="deliveryAddress"
-                                className="block text-sm/6 font-semibold text-gray-900"
-                            >
-                                {t("AuthenticatedView.delivery_address")}
-                            </label>
-                            <div className="mt-2.5">
-                                <input
-                                    id="deliveryAddress"
-                                    type="deliveryAddress"
-                                    autoComplete="deliveryAddress"
-                                    className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
-                                    {...register("deliveryAddress")}
-                                />
-                                <ErrorText>
-                                    {errors.deliveryAddress &&
-                                        t(
-                                            errors.deliveryAddress
-                                                .message as string
-                                        )}
-                                </ErrorText>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-6">
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="portOfOrigin"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.port_of_origin")}
-                                </label>
-
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <input
-                                            id="portOfOrigin"
-                                            type="portOfOrigin"
-                                            autoComplete="portOfOrigin"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("portOfOrigin")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.portOfOrigin &&
-                                            t(
-                                                errors.portOfOrigin
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="portOfDestination"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.port_of_destination")}
-                                </label>
-
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <input
-                                            id="portOfDestination"
-                                            type="portOfDestination"
-                                            autoComplete="portOfDestination"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("portOfDestination")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.portOfDestination &&
-                                            t(
-                                                errors.portOfDestination
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="sm:col-span-2 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-6">
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="containerNumber"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.container_number")}
-                                </label>
-
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <input
-                                            id="containerNumber"
-                                            type="containerNumber"
-                                            autoComplete="containerNumber"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("containerNumber")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.containerNumber &&
-                                            t(
-                                                errors.containerNumber
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-
-                            <div className="sm:col-span-3">
-                                <label
-                                    htmlFor="receiverId"
-                                    className="block text-sm/6 font-medium text-gray-900"
-                                >
-                                    {t("AuthenticatedView.receiver_id")}
-                                </label>
-
-                                <div className="mt-2">
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <input
-                                            id="receiverId"
-                                            type="receiverId"
-                                            autoComplete="receiverId"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            {...register("receiverId")}
-                                        />
-                                    </div>
-                                    <ErrorText>
-                                        {errors.receiverId &&
-                                            t(
-                                                errors.receiverId
-                                                    .message as string
-                                            )}
-                                    </ErrorText>
-                                </div>
-                            </div>
-                        </div>
+                        <input
+                            id="modelYear"
+                            className={`mt-1.5 block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.modelYear && "bg-green-50"}`}
+                            {...register("modelYear")}
+                        />
+                        <ErrorText>
+                            {errors.modelYear &&
+                                t(errors.modelYear.message as string)}
+                        </ErrorText>
                     </div>
 
-                    {/* Documents */}
-                    <div className="mt-4">
-                        <div className="mb-4">
-                            <div>
-                                <label className="block mb-1 font-medium">
-                                    {t("AuthenticatedView.bill_of_sale")}
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".pdf, .doc, .docx, .txt"
-                                    onChange={handleBillOfSaleUpload}
-                                    className="block w-full text-sm text-gray-700"
-                                />
-                            </div>
-                            {billOfSaleDocument && (
-                                <div className="flex my-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setBillOfSaleDocument(null);
-                                        }}
-                                        className="cursor-pointer text-red-700"
-                                    >
-                                        <XMarkIcon className="w-4" />
-                                    </button>
+                    <div>
+                        <label
+                            htmlFor="make"
+                            className="block text-sm/6 font-semibold text-gray-900"
+                        >
+                            Make
+                        </label>
+                        <input
+                            id="make"
+                            className={`mt-1.5 block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.make && "bg-green-50"}`}
+                            {...register("make")}
+                        />
+                        <ErrorText>
+                            {errors.make && t(errors.make.message as string)}
+                        </ErrorText>
+                    </div>
 
-                                    <p className="text-sm text-gray-700">
-                                        {billOfSaleDocument.name}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                    <div>
+                        <label
+                            htmlFor="model"
+                            className="block text-sm/6 font-semibold text-gray-900"
+                        >
+                            {t("AuthenticatedView.model")}
+                        </label>
+                        <input
+                            id="model"
+                            className={`mt-1.5 block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.model && "bg-green-50"}`}
+                            {...register("model")}
+                        />
+                        <ErrorText>
+                            {errors.model && t(errors.model.message as string)}
+                        </ErrorText>
+                    </div>
 
-                        <div className="mb-4">
-                            <div>
-                                <label className="block mb-1 font-medium">
-                                    {t("AuthenticatedView.title_document")}
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".pdf, .doc, .docx, .txt"
-                                    onChange={handleTitleUpload}
-                                    className="block w-full text-sm text-gray-700"
-                                />
-                            </div>
-                            {titleDocument && (
-                                <div className="flex my-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setTitleDocument(null);
-                                        }}
-                                        className="cursor-pointer text-red-700"
-                                    >
-                                        <XMarkIcon className="w-4" />
-                                    </button>
+                    <div>
+                        <label
+                            htmlFor="powertrain"
+                            className="block text-sm/6 font-semibold text-gray-900"
+                        >
+                            {t("AuthenticatedView.powertrain")}
+                        </label>
+                        <input
+                            id="powertrain"
+                            className={`mt-1.5 block w-full rounded-md px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary ${decodedVin?.powertrain && "bg-green-50"}`}
+                            {...register("powertrain")}
+                        />
+                        <ErrorText>
+                            {errors.powertrain &&
+                                t(errors.powertrain.message as string)}
+                        </ErrorText>
+                    </div>
 
-                                    <p className="text-sm text-gray-700">
-                                        {titleDocument.name}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mb-4">
-                            <div>
-                                <label className="block mb-1 font-medium">
-                                    {t("AuthenticatedView.bill_of_lading")}
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".pdf, .doc, .docx, .txt"
-                                    onChange={handleBillOfLadingUpload}
-                                    className="block w-full text-sm text-gray-700"
-                                />
-                            </div>
-                            {billOfLadingDocument && (
-                                <div className="flex my-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setBillOfLadingDocument(null);
-                                        }}
-                                        className="cursor-pointer text-red-700"
-                                    >
-                                        <XMarkIcon className="w-4" />
-                                    </button>
-
-                                    <p className="text-sm text-gray-700">
-                                        {billOfLadingDocument.name}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mb-4">
-                            <div>
-                                <label className="block mb-1 font-medium">
-                                    {t(
-                                        "AuthenticatedView.swb_release_document"
-                                    )}
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".pdf, .doc, .docx, .txt"
-                                    onChange={handleSWBReleaseUpload}
-                                    className="block w-full text-sm text-gray-700"
-                                />
-                            </div>
-                            {swbReleaseDocument && (
-                                <div className="flex my-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSWBReleaseDocument(null);
-                                        }}
-                                        className="cursor-pointer text-red-700"
-                                    >
-                                        <XMarkIcon className="w-4" />
-                                    </button>
-
-                                    <p className="text-sm text-gray-700">
-                                        {swbReleaseDocument.name}
-                                    </p>
-                                </div>
-                            )}
+                    <div className="sm:col-span-2">
+                        <label
+                            htmlFor="shippingStatus"
+                            className="block text-sm/6 font-semibold text-gray-900"
+                        >
+                            {t("AuthenticatedView.shipping_status")}
+                        </label>
+                        <div className="mt-1.5 grid grid-cols-1">
+                            <select
+                                className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
+                                id="shippingStatus"
+                                {...register("shippingStatus")}
+                            >
+                                <option value="Not delivered">
+                                    {t("AuthenticatedView.not_delivered")}
+                                </option>
+                                <option value="Delivered">
+                                    {t("AuthenticatedView.delivered")}
+                                </option>
+                            </select>
+                            <ChevronDownIcon
+                                aria-hidden="true"
+                                className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            />
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <div className="mt-3 sm:flex sm:flex-row-reverse">
                     <button
                         type="submit"
                         // onClick={}

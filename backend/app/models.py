@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import ARRAY, TEXT
+from sqlalchemy import ARRAY, TEXT, CheckConstraint, Computed
 from app.extensions import db
 
 class User(db.Model):
@@ -32,18 +32,37 @@ class User(db.Model):
 
 class Vehicle(db.Model):
     __tablename__ = "vehicles"
+    __table_args__ = (
+        CheckConstraint(
+            "shipping_status IN ('Delivered', 'Not delivered')",
+            name="ck_vehicles_shipping_status",
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
 
-    vehicle_name        = db.Column(db.String(100), nullable=False, default="")
-    lot_number          = db.Column(db.String(50),  nullable=False)
-    auction_name        = db.Column(db.String(100), nullable=False)
-    location            = db.Column(db.String(100), nullable=False)
-    shipping_status     = db.Column(db.String(50),  nullable=False)
-    price_delivery      = db.Column(db.Numeric(10, 2), nullable=False, default=0)
-    price_shipping      = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    vehicle_name = db.Column(
+        db.String(350),
+        Computed(
+            "trim(coalesce(model_year, '') || ' ' || coalesce(make, '') || ' ' || coalesce(model, '') || ' ' || vin)",
+            persisted=True,
+        ),
+    )
+    lot_number          = db.Column(db.String(50))
+    auction_name        = db.Column(db.String(100))
+    location            = db.Column(db.String(100))
+    shipping_status     = db.Column(
+        db.String(20),
+        nullable=False,
+        default="Not delivered",
+        server_default="Not delivered",
+    )
+    price_delivery      = db.Column(db.Numeric(10, 2))
+    price_shipping      = db.Column(db.Numeric(10, 2))
 
-    vin         = db.Column(db.CHAR(17))
+    vin         = db.Column(db.CHAR(17), nullable=False)
+    model_year  = db.Column(db.String(10))
+    make        = db.Column(db.String(100))
     powertrain  = db.Column(db.String(50))
     model       = db.Column(db.String(100))
     color       = db.Column(db.String(30))
@@ -60,6 +79,9 @@ class Vehicle(db.Model):
     container_number    = db.Column(db.String(20))
     port_of_origin      = db.Column(db.String(100))
     port_of_destination = db.Column(db.String(100))
+    destination         = db.Column(db.String(100))
+    etd                 = db.Column(db.Date)
+    eta                 = db.Column(db.Date)
     delivery_address    = db.Column(db.Text)
     receiver_id         = db.Column(db.String(255))
 
@@ -79,9 +101,11 @@ class Vehicle(db.Model):
             "auction_name":         self.auction_name,
             "location":             self.location,
             "shipping_status":      self.shipping_status,
-            "price_delivery":       float(self.price_delivery),
-            "price_shipping":       float(self.price_shipping),
+            "price_delivery":       float(self.price_delivery) if self.price_delivery is not None else None,
+            "price_shipping":       float(self.price_shipping) if self.price_shipping is not None else None,
             "vin":                  self.vin,
+            "model_year":           self.model_year,
+            "make":                 self.make,
             "powertrain":           self.powertrain,
             "model":                self.model,
             "color":                self.color,
@@ -91,6 +115,9 @@ class Vehicle(db.Model):
             "container_number":     self.container_number,
             "port_of_origin":       self.port_of_origin,
             "port_of_destination":  self.port_of_destination,
+            "destination":          self.destination,
+            "etd":                  self.etd.isoformat() if self.etd else None,
+            "eta":                  self.eta.isoformat() if self.eta else None,
             "delivery_address":     self.delivery_address,
             "receiver_id":          self.receiver_id,
             "image_order":          self.image_order,

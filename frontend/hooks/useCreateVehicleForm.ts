@@ -11,7 +11,6 @@ export interface CreateVehicleInfo {
     shippingStatus: string;
     priceDelivery: string;
     priceShipping: string;
-    vehicleName: string;
 
     deliveryAddress: string,
     portOfOrigin: string,
@@ -20,9 +19,15 @@ export interface CreateVehicleInfo {
     receiverId: string,
 
     vin: string;
+    modelYear: string;
+    make: string;
     powertrain: string;
     model: string;
     color: string;
+
+    destination: string;
+    etd: string;
+    eta: string;
 }
 
 export interface CreateVehicleMedia {
@@ -51,7 +56,6 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("shippingStatus", createVehicleInfo.shippingStatus);
             formData.append("priceDelivery", createVehicleInfo.priceDelivery);
             formData.append("priceShipping", createVehicleInfo.priceShipping);
-            formData.append("vehicleName", createVehicleInfo.vehicleName);
 
             formData.append("deliveryAddress", createVehicleInfo.deliveryAddress);
             formData.append("portOfOrigin", createVehicleInfo.portOfOrigin);
@@ -60,9 +64,14 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("receiverId", createVehicleInfo.receiverId);
 
             formData.append("vin", createVehicleInfo.vin);
+            formData.append("modelYear", createVehicleInfo.modelYear);
+            formData.append("make", createVehicleInfo.make);
             formData.append("powertrain", createVehicleInfo.powertrain);
             formData.append("model", createVehicleInfo.model);
             formData.append("color", createVehicleInfo.color);
+            formData.append("destination", createVehicleInfo.destination);
+            formData.append("etd", createVehicleInfo.etd);
+            formData.append("eta", createVehicleInfo.eta);
 
             createVehicleMedia.images.forEach((file) => formData.append("images", file, file.name))
             {createVehicleMedia.thumbnail && formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)}

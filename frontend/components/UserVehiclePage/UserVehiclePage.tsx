@@ -1,306 +1,228 @@
 import { useTranslation } from "react-i18next";
+import { CheckCircleIcon, ClockIcon } from "@heroicons/react/20/solid";
 import { translateStatus, Vehicle } from "../../hooks/interfaces";
 
 import ImageCarousel from "../ImageCarousel";
+import VehicleThumbnail from "../VehicleThumbnail";
+import DownloadImagesButton from "../DownloadImagesButton";
 
 interface Props {
     vehicle: Vehicle;
 }
 
 const UserVehiclePage = ({ vehicle }: Props) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+
+    const vehicleDetails = [
+        { label: t("AuthenticatedView.vin"), value: vehicle.vin },
+        { label: t("AuthenticatedView.year"), value: vehicle.model_year },
+        { label: t("AuthenticatedView.make"), value: vehicle.make },
+        { label: t("AuthenticatedView.model"), value: vehicle.model },
+        { label: t("AuthenticatedView.powertrain"), value: vehicle.powertrain },
+        {
+            label: t("AuthenticatedView.shipping_status"),
+            value: t(translateStatus(vehicle.shipping_status) as string),
+        },
+        { label: t("AuthenticatedView.destination"), value: vehicle.destination },
+        { label: "ETD", value: vehicle.etd },
+        { label: "ETA", value: vehicle.eta },
+    ];
+
+    const normalizeAsset = (src?: string) => src?.split("?")[0] ?? "";
+    const getNameFromUrl = (src?: string) => {
+        if (!src) return "";
+
+        try {
+            const parsed = new URL(src);
+            return decodeURIComponent(parsed.pathname.split("/").pop() ?? "");
+        } catch {
+            return decodeURIComponent(src.split("?")[0].split("/").pop() ?? "");
+        }
+    };
+    const thumbnailSources = new Set([
+        normalizeAsset(vehicle.vehicleThumbnail),
+        normalizeAsset(vehicle.vehicleThumbnailMobile),
+    ]);
+    const thumbnailName = vehicle.vehicleThumbnailName?.toLowerCase() ?? "";
+    const imageFallback = vehicle.vehicleImages?.[0] ?? "";
+    const bannerDesktopThumbnail =
+        vehicle.vehicleThumbnail || imageFallback || vehicle.vehicleThumbnailMobile || "";
+    const bannerMobileThumbnail =
+        vehicle.vehicleThumbnailMobile || imageFallback || vehicle.vehicleThumbnail || "";
+    const nonThumbnailImages = (vehicle.vehicleImages ?? []).filter(
+        (image) =>
+            !thumbnailSources.has(normalizeAsset(image)) &&
+            (!thumbnailName || getNameFromUrl(image).toLowerCase() !== thumbnailName)
+    );
+    const thumbnailImages = (vehicle.vehicleImages ?? []).filter(
+        (image) => !nonThumbnailImages.includes(image)
+    );
+    const photoImages =
+        nonThumbnailImages.length > 0
+            ? [...nonThumbnailImages, ...thumbnailImages]
+            : vehicle.vehicleImages ?? [];
+
+    const dateCreated = new Intl.DateTimeFormat(i18n.language, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(new Date(vehicle.created_at));
+
+    const statusBadgeClass =
+        vehicle.shipping_status === "Delivered"
+            ? "border-status-delivered-border bg-status-delivered-bg text-status-delivered-text"
+            : "border-status-not-delivered-border bg-status-not-delivered-bg text-status-not-delivered-text";
+    const StatusIcon =
+        vehicle.shipping_status === "Delivered" ? CheckCircleIcon : ClockIcon;
+
+    const renderFieldGrid = (
+        fields: { label: string; value: string | number | null }[]
+    ) => (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+            {fields.map((field) => (
+                <div key={field.label}>
+                    <dt className="text-sm font-medium text-gray-600">
+                        {field.label}
+                    </dt>
+                    <dd className="mt-1 break-words text-sm font-semibold text-gray-900">
+                        {field.value ?? ""}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
 
     return (
-        <div className="bg-white">
-            <div className="mx-auto px-4 py-6 sm:px-6 lg:max-w-8xl lg:px-8">
-                <div className="lg:grid lg:grid-cols-7 lg:grid-rows-1 lg:gap-x-8 lg:gap-y-10 xl:gap-x-16">
-                    {/* Image section */}
-                    <div className="lg:col-span-4 lg:row-end-1">
-                        <ImageCarousel
-                            images={vehicle.vehicleImages!}
-                            videos={vehicle.vehicleVideos!}
+        <div className="w-full max-w-full overflow-x-hidden bg-white pb-8 sm:overflow-visible">
+            <div className="mx-auto w-full max-w-full py-3 sm:max-w-none">
+                <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+                    <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[9rem_1fr] lg:items-center">
+                        <VehicleThumbnail
+                            mobileSrc={bannerMobileThumbnail}
+                            desktopSrc={bannerDesktopThumbnail}
+                            alt={vehicle.vehicle_name}
+                            fallbackSrc={imageFallback}
+                            hideMobileFallback
+                            className="aspect-[4/3] w-full rounded-lg object-cover sm:aspect-square lg:size-36"
                         />
-                    </div>
 
-                    {/* Info & actions section */}
-                    <div className="w-full mx-auto mt-14 max-w-2xl sm:mt-16 lg:col-span-3 lg:row-span-2 lg:row-end-2 lg:mt-0 lg:max-w-none">
-                        {/* Title & Edit Controls */}
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-                                {vehicle?.vehicle_name}
+                        <div className="min-w-0">
+                            <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+                                {vehicle.vehicle_name}
                             </h1>
-                        </div>
-
-                        {/* Details sections */}
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-medium text-gray-900">
-                                {t("AuthenticatedView.price")}
-                            </h3>
-                            <div className="mt-4 grid grid-cols-2 gap-x-4">
-                                {/* Delivery Price */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.price_delivery")}
-                                    </p>
-                                    <p className="mt-1 text-gray-900">
-                                        ${vehicle?.price_delivery}
-                                    </p>
-                                </div>
-
-                                {/* Shipping Price */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.price_shipping")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        ${vehicle?.price_shipping}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-medium text-gray-900">
-                                {t("AuthenticatedView.general_info")}
-                            </h3>
-                            <div className="mt-4 space-y-4">
-                                {/* Location */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.location")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.location}
-                                    </p>
-                                </div>
-
-                                {/* Auction Name */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.auction_name")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.auction_name}
-                                    </p>
-                                </div>
-
-                                {/* Lot # */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.lot_number")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.receiver_id}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-medium text-gray-900">
-                                {t("AuthenticatedView.shipping_status")}
-                            </h3>
-                            <div className="mt-4">
-                                <p className="text-gray-900">
+                            <div className="mt-3 flex flex-col items-start gap-2">
+                                <p className="text-sm font-medium text-gray-600">
+                                    {t("AuthenticatedView.date_created")}:{" "}
+                                    <time dateTime={vehicle.created_at}>
+                                        {dateCreated}
+                                    </time>
+                                </p>
+                                <span
+                                    className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold shadow-xs ${statusBadgeClass}`}
+                                >
+                                    <StatusIcon className="size-5" />
                                     {t(
                                         translateStatus(
-                                            vehicle?.shipping_status
+                                            vehicle.shipping_status
                                         ) as string
                                     )}
-                                </p>
+                                </span>
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        {/* Vehicle Info */}
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-medium text-gray-900">
+                <div className="mt-5 grid min-w-0 max-w-full gap-5 lg:grid-cols-3">
+                    <div className="min-w-0 space-y-5 lg:col-span-2">
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                            <h2 className="text-lg font-semibold text-gray-900">
                                 {t("AuthenticatedView.vehicle_info")}
-                            </h3>
-                            <div className="mt-4 space-y-4">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.vin")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.vin}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.powertrain")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.powertrain}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.model")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.model}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.color")}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.color}
-                                    </p>
-                                </div>
+                            </h2>
+                            <div className="mt-4 border-t border-gray-200 pt-4">
+                                {renderFieldGrid(vehicleDetails)}
                             </div>
-                        </div>
+                        </section>
 
-                        {/* Logistics / Shipping Details Section */}
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-medium text-gray-900">
-                                {t(
-                                    "AuthenticatedView.logistics_shipping_details"
-                                )}
-                            </h3>
-                            <div className="mt-4 space-y-4">
-                                {/* Container Number */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t(
-                                            "AuthenticatedView.container_number"
-                                        )}
-                                    </p>
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.container_number}
-                                    </p>
-                                </div>
-
-                                {/* Port of Origin */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.port_of_origin")}
-                                    </p>
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.port_of_origin}
-                                    </p>
-                                </div>
-
-                                {/* Port of Destination */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t(
-                                            "AuthenticatedView.port_of_destination"
-                                        )}
-                                    </p>
-
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.port_of_destination}
-                                    </p>
-                                </div>
-
-                                {/* Delivery Address */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t(
-                                            "AuthenticatedView.delivery_address"
-                                        )}
-                                    </p>
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.delivery_address}
-                                    </p>
-                                </div>
-
-                                {/* Receiver ID */}
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700">
-                                        {t("AuthenticatedView.receiver_id")}
-                                    </p>
-                                    <p className="mt-1 text-gray-900">
-                                        {vehicle?.receiver_id}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Documents */}
-                    <div className="border-t border-gray-200 pt-8 lg:col-span-4">
-                        <h3 className="text-lg font-medium text-gray-900">
-                            {t("AuthenticatedView.documents")}
-                        </h3>
-                        <div className="mt-4 space-y-4 text-sm font-medium">
-                            {/* Bill of Sale */}
-                            {vehicle.vehicleBillOfSaleDocument && (
-                                <div>
-                                    <a
-                                        href={vehicle.vehicleBillOfSaleDocument}
-                                        target="_blank"
-                                        rel="noopener"
-                                        className="text-primary hover:text-primary-hover"
-                                    >
-                                        {t(
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                {t("AuthenticatedView.documents")}
+                            </h2>
+                            <div className="mt-4 grid gap-3 border-t border-gray-200 pt-4 sm:grid-cols-2">
+                                {[
+                                    {
+                                        label: t("AuthenticatedView.bill_of_sale"),
+                                        href: vehicle.vehicleBillOfSaleDocument,
+                                        viewLabel: t(
                                             "AuthenticatedView.view_bill_of_sale"
-                                        )}
-                                    </a>
-                                </div>
-                            )}
-                            {/* Title Document */}
-                            {vehicle.vehicleTitleDocument && (
-                                <div className="flex">
-                                    <a
-                                        href={vehicle.vehicleTitleDocument}
-                                        target="_blank"
-                                        rel="noopener"
-                                        className="text-primary hover:text-primary-hover"
-                                    >
-                                        {t(
+                                        ),
+                                    },
+                                    {
+                                        label: t("AuthenticatedView.title_document"),
+                                        href: vehicle.vehicleTitleDocument,
+                                        viewLabel: t(
                                             "AuthenticatedView.view_title_document"
-                                        )}
-                                    </a>
-                                </div>
-                            )}
-                            {/* Bill of Lading # */}
-                            {vehicle.vehicleBillOfLadingDocument && (
-                                <div>
-                                    <a
-                                        href={
-                                            vehicle.vehicleBillOfLadingDocument
-                                        }
-                                        target="_blank"
-                                        rel="noopener"
-                                        className="text-primary hover:text-primary-hover"
-                                    >
-                                        {t(
+                                        ),
+                                    },
+                                    {
+                                        label: t("AuthenticatedView.bill_of_lading"),
+                                        href: vehicle.vehicleBillOfLadingDocument,
+                                        viewLabel: t(
                                             "AuthenticatedView.view_bill_of_lading"
-                                        )}
-                                    </a>
-                                </div>
-                            )}
-                            {/* Sea Waybill Release # */}
-                            {vehicle.vehicleSWBReleaseDocument && (
-                                <div>
-                                    <a
-                                        href={vehicle.vehicleSWBReleaseDocument}
-                                        target="_blank"
-                                        rel="noopener"
-                                        className="text-primary hover:text-primary-hover"
-                                    >
-                                        {t(
+                                        ),
+                                    },
+                                    {
+                                        label: t(
+                                            "AuthenticatedView.swb_release_document"
+                                        ),
+                                        href: vehicle.vehicleSWBReleaseDocument,
+                                        viewLabel: t(
                                             "AuthenticatedView.view_swb_release_document"
+                                        ),
+                                    },
+                                ].map((document) => (
+                                    <div key={document.label}>
+                                        <p className="text-sm font-medium text-gray-600">
+                                            {document.label}
+                                        </p>
+                                        {document.href ? (
+                                            <a
+                                                href={document.href}
+                                                target="_blank"
+                                                rel="noopener"
+                                                className="mt-1 inline-flex text-sm font-semibold text-primary hover:text-primary-hover"
+                                            >
+                                                {document.viewLabel}
+                                            </a>
+                                        ) : (
+                                            <span className="mt-1 inline-flex text-sm font-semibold text-red-600">
+                                                {t("AuthenticatedView.none")}
+                                            </span>
                                         )}
-                                    </a>
-                                </div>
-                            )}
-                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
                     </div>
+
+                    <aside className="min-w-0 lg:col-span-1">
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs lg:sticky lg:top-6">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    {t("AuthenticatedView.photos")}
+                                </h2>
+                                <DownloadImagesButton
+                                    images={photoImages}
+                                    vehicleName={vehicle.vehicle_name}
+                                />
+                            </div>
+                            <div className="mt-4 border-t border-gray-200 pt-4">
+                                <ImageCarousel
+                                    images={photoImages}
+                                    videos={[]}
+                                />
+                            </div>
+                        </section>
+                    </aside>
                 </div>
             </div>
         </div>

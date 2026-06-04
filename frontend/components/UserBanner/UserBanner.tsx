@@ -31,7 +31,7 @@ const UserBanner = ({ user }: Props) => {
                     Profile Overview
                 </h2>
 
-                <div className="bg-white pb-8">
+                <div className="py-4">
                     <div className="sm:flex sm:items-center sm:justify-between">
                         <div className="sm:flex sm:space-x-5">
                             <div className="shrink-0">

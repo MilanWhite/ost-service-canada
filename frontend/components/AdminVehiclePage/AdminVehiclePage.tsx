@@ -1,22 +1,50 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CanceledError } from "axios";
+import {
+    CheckCircleIcon,
+    ClockIcon,
+    XMarkIcon,
+} from "@heroicons/react/20/solid";
 
 import ImageCarousel from "../ImageCarousel";
 import ZipImagePreviewer from "../ZipImagePreviewer";
 import AdminDeleteVehicleDialog from "../AdminDeleteVehicleDialog";
 import ErrorBanner from "../ErrorBanner";
+import VehicleThumbnail from "../VehicleThumbnail";
+import DownloadImagesButton from "../DownloadImagesButton";
 
 import { useEditVehicle } from "../../hooks/useEditVehicle";
 import { translateStatus, Vehicle } from "../../hooks/interfaces";
+import {
+    DOCUMENT_FILE_ACCEPT,
+    isDocumentFile,
+} from "../../src/config/fileTypes";
 
 interface Props {
     vehicle: Vehicle;
 }
 
+type EditableVehicleField =
+    | "vin"
+    | "model_year"
+    | "make"
+    | "model"
+    | "powertrain"
+    | "shipping_status"
+    | "destination"
+    | "etd"
+    | "eta";
+
+interface FieldConfig {
+    label: string;
+    value?: string | number | null;
+    field?: EditableVehicleField;
+    type?: string;
+}
+
 const AdminVehiclePage = ({ vehicle: initial }: Props) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     const {
         vehicle,
@@ -29,14 +57,20 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         saveChanges,
     } = useEditVehicle(initial, true);
 
-    // image editor states
     const [imageFiles, setImageFiles] = useState<File[]>([]);
-
     const [thumbnail, setThumbnail] = useState<File | null>(null);
+    const [documentFiles, setDocumentFiles] = useState({
+        billOfSaleDocument: null as File | null,
+        titleDocument: null as File | null,
+        billOfLadingDocument: null as File | null,
+        swbReleaseDocument: null as File | null,
+    });
+    const [deleteDocumentTypes, setDeleteDocumentTypes] = useState<string[]>(
+        []
+    );
     const normName = (u: string) =>
-        decodeURIComponent(u.split("/").pop()!.split("?")[0])
+        decodeURIComponent(u.split("/").pop()!.split("?")[0]);
 
-    // create vehicle File out of URL
     useEffect(() => {
         let cancelled = false;
 
@@ -47,21 +81,19 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                 return;
             }
 
-            // Fetch each URL; return null on error
             const filePromises = urls.map(async (rawUrl) => {
                 try {
                     const res = await fetch(rawUrl);
-                    if (!res.ok) return null; //
+                    if (!res.ok) return null;
                     const blob = await res.blob();
                     const name = normName(rawUrl);
                     return new File([blob], name, { type: blob.type });
                 } catch {
-                    return null; // network err etc.
+                    return null;
                 }
             });
 
             const files = (await Promise.all(filePromises)).filter(
-                // filter failures we dont want THAT!
                 (f): f is File => f !== null
             );
 
@@ -75,7 +107,6 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         };
     }, [initial.vehicleImages]);
 
-    // determine existing & deleted files
     const { toAdd, toDelete } = useMemo(() => {
         const originalNames = new Set(
             (initial.vehicleImages ?? []).map(normName)
@@ -93,6 +124,9 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     }, [imageFiles, initial.vehicleImages]);
 
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [documentFileError, setDocumentFileError] = useState<string | null>(
+        null
+    );
 
     const handleSave = async () => {
         setSaveError(null);
@@ -103,6 +137,8 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                 deleteKeys: toDelete,
                 newThumbnail: thumbnail,
                 imageOrder: imageFiles.map((imageFile) => imageFile.name),
+                deleteDocumentTypes,
+                ...documentFiles,
             });
 
             window.location.reload();
@@ -116,11 +152,152 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     const [isDeleteVehicleDialogOpen, setDeleteVehicleDialogOpen] =
         useState(false);
 
+    const vehicleDetails: FieldConfig[] = [
+        { label: t("AuthenticatedView.vin"), field: "vin" },
+        { label: t("AuthenticatedView.year"), field: "model_year" },
+        { label: t("AuthenticatedView.make"), field: "make" },
+        { label: t("AuthenticatedView.model"), field: "model" },
+        { label: t("AuthenticatedView.powertrain"), field: "powertrain" },
+        {
+            label: t("AuthenticatedView.shipping_status"),
+            field: "shipping_status",
+        },
+        { label: t("AuthenticatedView.destination"), field: "destination" },
+        { label: "ETD", field: "etd", type: "date" },
+        { label: "ETA", field: "eta", type: "date" },
+    ];
+
+    const normalizeAsset = (src?: string) => src?.split("?")[0] ?? "";
+    const getNameFromUrl = (src?: string) => {
+        if (!src) return "";
+
+        try {
+            const parsed = new URL(src);
+            return decodeURIComponent(parsed.pathname.split("/").pop() ?? "");
+        } catch {
+            return decodeURIComponent(src.split("?")[0].split("/").pop() ?? "");
+        }
+    };
+    const thumbnailSources = new Set([
+        normalizeAsset(vehicle.vehicleThumbnail),
+        normalizeAsset(vehicle.vehicleThumbnailMobile),
+    ]);
+    const thumbnailName = vehicle.vehicleThumbnailName?.toLowerCase() ?? "";
+    const imageFallback = vehicle.vehicleImages?.[0] ?? "";
+    const bannerDesktopThumbnail =
+        vehicle.vehicleThumbnail ||
+        imageFallback ||
+        vehicle.vehicleThumbnailMobile ||
+        "";
+    const bannerMobileThumbnail =
+        vehicle.vehicleThumbnailMobile ||
+        imageFallback ||
+        vehicle.vehicleThumbnail ||
+        "";
+    const nonThumbnailImages = (vehicle.vehicleImages ?? []).filter(
+        (image) =>
+            !thumbnailSources.has(normalizeAsset(image)) &&
+            (!thumbnailName || getNameFromUrl(image).toLowerCase() !== thumbnailName)
+    );
+    const thumbnailImages = (vehicle.vehicleImages ?? []).filter(
+        (image) => !nonThumbnailImages.includes(image)
+    );
+    const photoImages =
+        nonThumbnailImages.length > 0
+            ? [...nonThumbnailImages, ...thumbnailImages]
+            : vehicle.vehicleImages ?? [];
+
+    const documents = [
+        {
+            key: "billOfSaleDocument" as const,
+            documentType: "bill_of_sale_document",
+            label: t("AuthenticatedView.bill_of_sale"),
+            href: vehicle.vehicleBillOfSaleDocument,
+            viewLabel: t("AuthenticatedView.view_bill_of_sale"),
+        },
+        {
+            key: "titleDocument" as const,
+            documentType: "title_document",
+            label: t("AuthenticatedView.title_document"),
+            href: vehicle.vehicleTitleDocument,
+            viewLabel: t("AuthenticatedView.view_title_document"),
+        },
+        {
+            key: "billOfLadingDocument" as const,
+            documentType: "bill_of_lading_document",
+            label: t("AuthenticatedView.bill_of_lading"),
+            href: vehicle.vehicleBillOfLadingDocument,
+            viewLabel: t("AuthenticatedView.view_bill_of_lading"),
+        },
+        {
+            key: "swbReleaseDocument" as const,
+            documentType: "swb_release_document",
+            label: t("AuthenticatedView.swb_release_document"),
+            href: vehicle.vehicleSWBReleaseDocument,
+            viewLabel: t("AuthenticatedView.view_swb_release_document"),
+        },
+    ];
+
+    const dateCreated = new Intl.DateTimeFormat(i18n.language, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(new Date(vehicle.created_at));
+
+    const statusBadgeClass =
+        vehicle.shipping_status === "Delivered"
+            ? "border-status-delivered-border bg-status-delivered-bg text-status-delivered-text"
+            : "border-status-not-delivered-border bg-status-not-delivered-bg text-status-not-delivered-text";
+    const StatusIcon =
+        vehicle.shipping_status === "Delivered" ? CheckCircleIcon : ClockIcon;
+
+    const renderFieldGrid = (fields: FieldConfig[]) => (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+            {fields.map((field) => (
+                <div key={field.label}>
+                    <dt className="text-sm font-medium text-gray-600">
+                        {field.label}
+                    </dt>
+                    <dd className="mt-1 min-w-0 break-words text-sm font-semibold text-gray-900">
+                        {isEditing && field.field === "shipping_status" ? (
+                            <select
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
+                                value={vehicle.shipping_status}
+                                onChange={handleChange("shipping_status")}
+                            >
+                                <option value="Not delivered">
+                                    {t("AuthenticatedView.not_delivered")}
+                                </option>
+                                <option value="Delivered">
+                                    {t("AuthenticatedView.delivered")}
+                                </option>
+                            </select>
+                        ) : isEditing && field.field ? (
+                            <input
+                                type={field.type ?? "text"}
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
+                                value={vehicle[field.field] ?? ""}
+                                onChange={handleChange(field.field)}
+                            />
+                        ) : field.field === "shipping_status" ? (
+                            t(translateStatus(vehicle.shipping_status) as string)
+                        ) : field.field ? (
+                            vehicle[field.field] ?? ""
+                        ) : (
+                            field.value ?? ""
+                        )}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
+
     return (
         <>
-            {(editVehicleError || saveError) && (
+            {(editVehicleError || saveError || documentFileError) && (
                 <ErrorBanner>
-                    {t((editVehicleError ?? saveError) as string)}
+                    {documentFileError ??
+                        t((editVehicleError ?? saveError) as string)}
                 </ErrorBanner>
             )}
 
@@ -130,468 +307,68 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                 setDeleteVehicleDialogOpen={setDeleteVehicleDialogOpen}
             />
 
-            <div className="bg-white">
-                <div className="mx-auto px-4 py-6 sm:px-6 lg:max-w-8xl lg:px-8">
-                    <div className="lg:grid lg:grid-cols-7 lg:grid-rows-1 lg:gap-x-8 lg:gap-y-10 xl:gap-x-16">
-                        <div className="lg:col-span-4 lg:row-end-1">
-                            <ImageCarousel
-                                images={vehicle.vehicleImages ?? []}
-                                videos={vehicle.vehicleVideos ?? []}
+            <div className="w-full max-w-full overflow-x-hidden bg-white pb-8 sm:overflow-visible">
+                <div className="mx-auto w-full max-w-full py-3 sm:max-w-none">
+                    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+                        <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[9rem_1fr_auto] lg:items-center">
+                            <VehicleThumbnail
+                                mobileSrc={bannerMobileThumbnail}
+                                desktopSrc={bannerDesktopThumbnail}
+                                alt={vehicle.vehicle_name}
+                                fallbackSrc={imageFallback}
+                                hideMobileFallback
+                                className="aspect-[4/3] w-full rounded-lg object-cover sm:aspect-square lg:size-36"
                             />
-                        </div>
-                        <div className="w-full mx-auto mt-14 max-w-2xl sm:mt-16 lg:col-span-3 lg:row-span-2 lg:row-end-2 lg:mt-0 lg:max-w-none">
-                            <div className="flex items-center justify-between">
-                                {/* title */}
+
+                            <div className="min-w-0">
+                                <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+                                    {vehicle.vehicle_name}
+                                </h1>
+                                <div className="mt-3 flex flex-col items-start gap-2">
+                                    <p className="text-sm font-medium text-gray-600">
+                                        {t("AuthenticatedView.date_created")}:{" "}
+                                        <time dateTime={vehicle.created_at}>
+                                            {dateCreated}
+                                        </time>
+                                    </p>
+                                    <span
+                                        className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold shadow-xs ${statusBadgeClass}`}
+                                    >
+                                        <StatusIcon className="size-5" />
+                                        {t(
+                                            translateStatus(
+                                                vehicle.shipping_status
+                                            ) as string
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3 sm:flex-row">
                                 {isEditing ? (
-                                    <input
-                                        type="text"
-                                        value={vehicle?.vehicle_name}
-                                        onChange={handleChange("vehicle_name")}
-                                        className="block w-full font-bold rounded-md bg-white px-3 py-1 text-2xl text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-3xl"
-                                    />
-                                ) : (
-                                    <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-                                        {vehicle?.vehicle_name}
-                                    </h1>
-                                )}
-                            </div>
-                            {/* Details sections */}
-                            <div className="mt-8 border-t border-gray-200 pt-8">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                    {t("AuthenticatedView.price")}
-                                </h3>
-                                <div className="mt-4 grid grid-cols-2 gap-x-4">
-                                    {/* Delivery Price */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.price_delivery"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                                <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                                    $
-                                                </div>
-                                                <input
-                                                    type="number"
-                                                    className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-md/6"
-                                                    value={
-                                                        vehicle.price_delivery
-                                                    }
-                                                    onChange={handleChange(
-                                                        "price_delivery"
-                                                    )}
-                                                />
-                                                <div
-                                                    id="price-currency"
-                                                    className="shrink-0 text-md text-gray-500 select-none sm:text-sm/6"
-                                                >
-                                                    USD
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                ${vehicle?.price_delivery}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Shipping Price */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.price_shipping"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                                <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                                    $
-                                                </div>
-                                                <input
-                                                    type="number"
-                                                    className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-md/6"
-                                                    value={
-                                                        vehicle.price_shipping
-                                                    }
-                                                    onChange={handleChange(
-                                                        "price_shipping"
-                                                    )}
-                                                />
-                                                <div
-                                                    id="price-currency"
-                                                    className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6"
-                                                >
-                                                    USD
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                ${vehicle?.price_shipping}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 border-t border-gray-200 pt-8">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                    {t("AuthenticatedView.general_info")}
-                                </h3>
-                                <div className="mt-4 space-y-4">
-                                    {/* Location */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.location")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.location}
-                                                onChange={handleChange(
-                                                    "location"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.location}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Auction Name */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.auction_name"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.auction_name}
-                                                onChange={handleChange(
-                                                    "auction_name"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.auction_name}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Lot # */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.lot_number")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.lot_number}
-                                                onChange={handleChange(
-                                                    "lot_number"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.lot_number}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 border-t border-gray-200 pt-8">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                    {t("AuthenticatedView.shipping_status")}
-                                </h3>
-                                <div className="mt-4">
-                                    {isEditing ? (
-                                        <div className="mt-2 grid grid-cols-1">
-                                            <select
-                                                className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.shipping_status}
-                                                onChange={handleChange(
-                                                    "shipping_status"
-                                                )}
-                                            >
-                                                <option>
-                                                    {t(
-                                                        "AuthenticatedView.auction"
-                                                    )}
-                                                </option>
-                                                <option>
-                                                    {t(
-                                                        "AuthenticatedView.in_transit"
-                                                    )}
-                                                </option>
-                                                <option>
-                                                    {t(
-                                                        "AuthenticatedView.out_for_delivery"
-                                                    )}
-                                                </option>
-                                                <option>
-                                                    {t(
-                                                        "AuthenticatedView.delivered"
-                                                    )}
-                                                </option>
-                                            </select>
-                                            <ChevronDownIcon
-                                                aria-hidden="true"
-                                                className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-900">
-                                            {t(
-                                                translateStatus(
-                                                    vehicle?.shipping_status
-                                                ) as string
-                                            )}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Vehicle Info */}
-                            <div className="mt-8 border-t border-gray-200 pt-8">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                    {t("AuthenticatedView.vehicle_info")}
-                                </h3>
-                                <div className="mt-4 space-y-4">
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.vin")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.vin}
-                                                onChange={handleChange("vin")}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.vin}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.powertrain")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.powertrain}
-                                                onChange={handleChange(
-                                                    "powertrain"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.powertrain}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.model")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.model}
-                                                onChange={handleChange("model")}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.model}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.color")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.color}
-                                                onChange={handleChange("color")}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.color}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Logistics / Shipping Details Section */}
-                            <div className="mt-8 border-t border-gray-200 pt-8">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                    {t(
-                                        "AuthenticatedView.logistics_shipping_details"
-                                    )}
-                                </h3>
-                                <div className="mt-4 space-y-4">
-                                    {/* Container Number */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.container_number"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.container_number}
-                                                onChange={handleChange(
-                                                    "container_number"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.container_number}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Port of Origin */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.port_of_origin"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.port_of_origin}
-                                                onChange={handleChange(
-                                                    "port_of_origin"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.port_of_origin}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Port of Destination */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.port_of_destination"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={
-                                                    vehicle.port_of_destination
-                                                }
-                                                onChange={handleChange(
-                                                    "port_of_destination"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.port_of_destination}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Delivery Address */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t(
-                                                "AuthenticatedView.delivery_address"
-                                            )}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.delivery_address}
-                                                onChange={handleChange(
-                                                    "delivery_address"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.delivery_address}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Receiver ID */}
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            {t("AuthenticatedView.receiver_id")}
-                                        </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="text"
-                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-md text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-md/6"
-                                                value={vehicle.receiver_id}
-                                                onChange={handleChange(
-                                                    "receiver_id"
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="mt-1 text-gray-900">
-                                                {vehicle?.receiver_id}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Buttons  */}
-                            <div className="mt-8">
-                                {isEditing ? (
-                                    <div className="space-y-4">
-                                        <button
-                                            onClick={cancelEditing}
-                                            className="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-75 sm:mt-0 sm:w-auto mt-3"
-                                            disabled={isEditVehicleLoading}
-                                        >
-                                            {t("AuthenticatedView.cancel")}
-                                        </button>
+                                    <>
                                         <button
                                             onClick={handleSave}
                                             disabled={isEditVehicleLoading}
-                                            className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:opacity-75 sm:ml-3 sm:w-auto"
+                                            className="inline-flex cursor-pointer justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-75"
                                         >
                                             {isEditVehicleLoading
                                                 ? t("AuthenticatedView.saving")
                                                 : t("AuthenticatedView.save")}
                                         </button>
-                                    </div>
+                                        <button
+                                            onClick={cancelEditing}
+                                            disabled={isEditVehicleLoading}
+                                            className="inline-flex cursor-pointer justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-75"
+                                        >
+                                            {t("AuthenticatedView.cancel")}
+                                        </button>
+                                    </>
                                 ) : (
-                                    <div className="flex space-x-4">
+                                    <>
                                         <button
                                             onClick={startEditing}
-                                            className="rounded bg-white w-full px-5 py-2 text-sm font-semibold text-gray-900 shadow ring-1 ring-gray-300 hover:bg-gray-50"
+                                            className="inline-flex cursor-pointer justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
                                         >
                                             {t("AuthenticatedView.edit")}
                                         </button>
@@ -599,108 +376,237 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                             onClick={() =>
                                                 setDeleteVehicleDialogOpen(true)
                                             }
-                                            className="inline-flex justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500 sm:w-auto"
+                                            className="inline-flex cursor-pointer justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500"
                                         >
                                             {t("AuthenticatedView.delete")}
                                         </button>
-                                    </div>
+                                    </>
                                 )}
                             </div>
                         </div>
+                    </section>
 
-                        {/* Image Editor */}
-
-                        <div className="border-t border-gray-200 lg:col-span-4 self-start">
-                            {isEditing && (
-                                <div className="mt-4 mb-8">
-                                    <h3 className="text-lg font-medium text-gray-900">
-                                        {t("AuthenticatedView.edit_images")}
-                                    </h3>
-                                    <ZipImagePreviewer
-                                        files={imageFiles}
-                                        setFiles={setImageFiles}
-                                        thumbnail={thumbnail}
-                                        setThumbnail={setThumbnail}
-                                        preferredThumbnailName={
-                                            vehicle.vehicleThumbnail
-                                        }
-                                    />
+                    <div className="mt-5 grid min-w-0 max-w-full gap-5 lg:grid-cols-3">
+                        <div className="min-w-0 space-y-5 lg:col-span-2">
+                            <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    {t("AuthenticatedView.vehicle_info")}
+                                </h2>
+                                <div className="mt-4 border-t border-gray-200 pt-4">
+                                    {renderFieldGrid(vehicleDetails)}
                                 </div>
-                            )}
-                            <div className="mt-0 border-t border-gray-200 pt-8 ">
-                                <h3 className="text-lg font-medium text-gray-900">
+                            </section>
+
+                            <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                                <h2 className="text-lg font-semibold text-gray-900">
                                     {t("AuthenticatedView.documents")}
-                                </h3>
-                                <div className="mt-4 space-y-4 text-sm font-medium">
-                                    {vehicle.vehicleBillOfSaleDocument && (
-                                        <div>
-                                            <a
-                                                href={
-                                                    vehicle.vehicleBillOfSaleDocument
-                                                }
-                                                target="_blank"
-                                                rel="noopener"
-                                                className="text-primary hover:text-primary-hover"
-                                            >
-                                                {t(
-                                                    "AuthenticatedView.view_bill_of_sale"
-                                                )}
-                                            </a>
+                                </h2>
+                                <div className="mt-4 grid gap-3 border-t border-gray-200 pt-4 sm:grid-cols-2">
+                                    {documents.map((document) => (
+                                        <div key={document.label}>
+                                            <p className="text-sm font-medium text-gray-600">
+                                                {document.label}
+                                            </p>
+                                            {document.href &&
+                                            !deleteDocumentTypes.includes(
+                                                document.documentType
+                                            ) ? (
+                                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                    <a
+                                                        href={document.href}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        className="inline-flex text-sm font-semibold text-primary hover:text-primary-hover"
+                                                    >
+                                                        {document.viewLabel}
+                                                    </a>
+                                                    {isEditing && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setDeleteDocumentTypes(
+                                                                    (prev) =>
+                                                                        prev.includes(
+                                                                            document.documentType
+                                                                        )
+                                                                            ? prev
+                                                                            : [
+                                                                                  ...prev,
+                                                                                  document.documentType,
+                                                                              ]
+                                                                )
+                                                            }
+                                                            className="inline-flex size-5 items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                                            aria-label={`Remove ${document.label}`}
+                                                        >
+                                                            <XMarkIcon className="size-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : deleteDocumentTypes.includes(
+                                                  document.documentType
+                                              ) ? (
+                                                <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                                                    {t("AuthenticatedView.removed_on_save")}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setDeleteDocumentTypes(
+                                                                (prev) =>
+                                                                    prev.filter(
+                                                                        (
+                                                                            type
+                                                                        ) =>
+                                                                            type !==
+                                                                            document.documentType
+                                                                    )
+                                                            )
+                                                        }
+                                                        className="rounded-full hover:bg-red-100"
+                                                        aria-label={`${t("AuthenticatedView.undo_remove")} ${document.label}`}
+                                                    >
+                                                        <XMarkIcon className="size-4" />
+                                                    </button>
+                                                </span>
+                                            ) : !isEditing ? (
+                                                <span className="mt-1 inline-flex text-sm font-semibold text-red-600">
+                                                    {t("AuthenticatedView.none")}
+                                                </span>
+                                            ) : null}
+                                            {isEditing && (
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <label className="inline-flex cursor-pointer items-center justify-center rounded-md bg-primary-100 px-3 py-1.5 text-xs font-semibold text-primary shadow-xs hover:bg-primary-100/70">
+                                                        {t("AuthenticatedView.choose_file")}
+                                                        <input
+                                                            type="file"
+                                                            accept={
+                                                                DOCUMENT_FILE_ACCEPT
+                                                            }
+                                                            className="sr-only"
+                                                            onChange={(event) => {
+                                                                const file =
+                                                                    event.target
+                                                                        .files?.[0] ??
+                                                                    null;
+
+                                                                if (
+                                                                    file &&
+                                                                    !isDocumentFile(
+                                                                        file
+                                                                    )
+                                                                ) {
+                                                                    setDocumentFileError(
+                                                                        "Please choose a document file: PDF, Word, Excel, CSV, TXT, RTF, or ODT."
+                                                                    );
+                                                                    event.target.value =
+                                                                        "";
+                                                                    return;
+                                                                }
+
+                                                                setDocumentFileError(
+                                                                    null
+                                                                );
+                                                                setDocumentFiles(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        [document.key]:
+                                                                            file,
+                                                                    })
+                                                                );
+                                                                setDeleteDocumentTypes(
+                                                                    (prev) =>
+                                                                        prev.filter(
+                                                                            (
+                                                                                type
+                                                                            ) =>
+                                                                                type !==
+                                                                                document.documentType
+                                                                        )
+                                                                );
+                                                                event.target.value =
+                                                                    "";
+                                                            }}
+                                                        />
+                                                    </label>
+                                                    {documentFiles[
+                                                        document.key
+                                                    ] && (
+                                                        <span className="inline-flex max-w-52 items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-gray-700">
+                                                            <span className="truncate">
+                                                                {
+                                                                    documentFiles[
+                                                                        document
+                                                                            .key
+                                                                    ]?.name
+                                                                }
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setDocumentFiles(
+                                                                        (
+                                                                            prev
+                                                                        ) => ({
+                                                                            ...prev,
+                                                                            [document.key]:
+                                                                                null,
+                                                                        })
+                                                                    )
+                                                                }
+                                                                className="shrink-0 rounded-full text-red-600 hover:bg-red-100 hover:text-red-700"
+                                                                aria-label={`Remove ${document.label}`}
+                                                            >
+                                                                <XMarkIcon className="size-4" />
+                                                            </button>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                    {vehicle.vehicleTitleDocument && (
-                                        <div>
-                                            <a
-                                                href={
-                                                    vehicle.vehicleTitleDocument
-                                                }
-                                                target="_blank"
-                                                rel="noopener"
-                                                className="text-primary hover:text-primary-hover"
-                                            >
-                                                {t(
-                                                    "AuthenticatedView.view_title_document"
-                                                )}
-                                            </a>
-                                        </div>
-                                    )}
-                                    {vehicle.vehicleBillOfLadingDocument && (
-                                        <div>
-                                            <a
-                                                href={
-                                                    vehicle.vehicleBillOfLadingDocument
-                                                }
-                                                target="_blank"
-                                                rel="noopener"
-                                                className="text-primary hover:text-primary-hover"
-                                            >
-                                                {t(
-                                                    "AuthenticatedView.view_bill_of_lading"
-                                                )}
-                                            </a>
-                                        </div>
-                                    )}
-                                    {vehicle.vehicleSWBReleaseDocument && (
-                                        <div>
-                                            <a
-                                                href={
-                                                    vehicle.vehicleSWBReleaseDocument
-                                                }
-                                                target="_blank"
-                                                rel="noopener"
-                                                className="text-primary hover:text-primary-hover"
-                                            >
-                                                {t(
-                                                    "AuthenticatedView.view_swb_release_document"
-                                                )}
-                                            </a>
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
-                            </div>
+                            </section>
+
+                            {isEditing && (
+                                <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        {t("AuthenticatedView.edit_images")}
+                                    </h2>
+                                    <div className="mt-4 border-t border-gray-200 pt-4">
+                                        <ZipImagePreviewer
+                                            files={imageFiles}
+                                            setFiles={setImageFiles}
+                                            thumbnail={thumbnail}
+                                            setThumbnail={setThumbnail}
+                                            preferredThumbnailName={
+                                                vehicle.vehicleThumbnailName ??
+                                                vehicle.vehicleThumbnail
+                                            }
+                                        />
+                                    </div>
+                                </section>
+                            )}
                         </div>
 
-                        {/* Documents */}
+                        <aside className="min-w-0 lg:col-span-1">
+                            <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs lg:sticky lg:top-6">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        {t("AuthenticatedView.photos")}
+                                    </h2>
+                                    <DownloadImagesButton
+                                        images={photoImages}
+                                        vehicleName={vehicle.vehicle_name}
+                                    />
+                                </div>
+                                <div className="mt-4 border-t border-gray-200 pt-4">
+                                    <ImageCarousel
+                                        images={photoImages}
+                                        videos={[]}
+                                    />
+                                </div>
+                            </section>
+                        </aside>
                     </div>
                 </div>
             </div>

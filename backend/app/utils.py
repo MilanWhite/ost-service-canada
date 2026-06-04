@@ -97,14 +97,27 @@ def get_vehicle_thumbnail_filename(sub, vehicle_id):
     resp = s3_client.list_objects_v2(
         Bucket=Config.S3_BUCKET,
         Prefix=prefix,
-        MaxKeys=2,
     )
 
-    keys = [obj["Key"] for obj in resp.get("Contents", []) if not obj["Key"].endswith("/")]
-    if not keys:
+    objects = [
+        obj
+        for obj in resp.get("Contents", [])
+        if not obj["Key"].endswith("/")
+    ]
+    if not objects:
         return None
 
-    mobile_key = next((k for k in keys
+    keys = [
+        obj["Key"]
+        for obj in sorted(
+            objects,
+            key=lambda obj: obj.get("LastModified"),
+            reverse=True,
+        )
+    ]
+
+    mobile_key = next((k for k
+                       in keys
                        if os.path.splitext(os.path.basename(k))[0].endswith("_mobile")), None)
     regular_key = next((k for k in keys if k != mobile_key), None)
 
@@ -142,10 +155,23 @@ def get_vehicle_thumbnails(sub: str, vehicle_id: str):
         Prefix=prefix,
     )
 
-    keys = [obj["Key"] for obj in resp.get("Contents", []) if not obj["Key"].endswith("/")]
+    objects = [
+        obj
+        for obj in resp.get("Contents", [])
+        if not obj["Key"].endswith("/")
+    ]
 
-    if not keys:
+    if not objects:
         return None, None
+
+    keys = [
+        obj["Key"]
+        for obj in sorted(
+            objects,
+            key=lambda obj: obj.get("LastModified"),
+            reverse=True,
+        )
+    ]
 
     mobile_key = next(
         (k for k in keys if os.path.splitext(os.path.basename(k))[0].endswith("_mobile")),
@@ -257,3 +283,44 @@ def get_vehicle_document(sub, vehicle_id, document_type):
     except Exception as e:
         print(e)
         return error_response(message=str(e), code=500)
+
+def get_vehicle_documents(sub, vehicle_id):
+    try:
+
+        resp = s3_client.list_objects_v2(
+            Bucket=Config.S3_BUCKET,
+            Prefix=f"{sub}/{vehicle_id}/documents/",
+        )
+
+        keys = [
+            obj["Key"]
+            for obj in resp.get("Contents", [])
+            if not obj["Key"].endswith("/")
+        ]
+
+        def presign(document_type):
+            key = next((key for key in keys if document_type in key), None)
+            if not key:
+                return ""
+
+            return s3_client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": Config.S3_BUCKET, "Key": key},
+                ExpiresIn=3600,
+            )
+
+        return {
+            "vehicleBillOfSaleDocument": presign("bill_of_sale_document"),
+            "vehicleTitleDocument": presign("title_document"),
+            "vehicleBillOfLadingDocument": presign("bill_of_lading_document"),
+            "vehicleSWBReleaseDocument": presign("swb_release_document"),
+        }
+
+    except Exception as e:
+        print(e)
+        return {
+            "vehicleBillOfSaleDocument": "",
+            "vehicleTitleDocument": "",
+            "vehicleBillOfLadingDocument": "",
+            "vehicleSWBReleaseDocument": "",
+        }

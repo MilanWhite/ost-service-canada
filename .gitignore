@@ -36,3 +36,5 @@ frontend/src/amplifyconfiguration.json
 *.sw?
 
 /private
+
+/scripts

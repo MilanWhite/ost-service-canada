@@ -8,6 +8,11 @@ export interface EditExtras {
     deleteKeys?: string[];
     newThumbnail?: File | null;
     imageOrder?: string[];
+    billOfSaleDocument?: File | null;
+    titleDocument?: File | null;
+    billOfLadingDocument?: File | null;
+    swbReleaseDocument?: File | null;
+    deleteDocumentTypes?: string[];
 }
 
 export interface EditVehicleHook {
@@ -68,6 +73,37 @@ export function useEditVehicle(
                 if (extras?.newThumbnail) {
                     form.append("new_thumbnail", extras?.newThumbnail)
                 }
+                if (extras?.billOfSaleDocument) {
+                    form.append(
+                        "billOfSaleDocument",
+                        extras.billOfSaleDocument,
+                        extras.billOfSaleDocument.name
+                    );
+                }
+                if (extras?.titleDocument) {
+                    form.append(
+                        "titleDocument",
+                        extras.titleDocument,
+                        extras.titleDocument.name
+                    );
+                }
+                if (extras?.billOfLadingDocument) {
+                    form.append(
+                        "billOfLadingDocument",
+                        extras.billOfLadingDocument,
+                        extras.billOfLadingDocument.name
+                    );
+                }
+                if (extras?.swbReleaseDocument) {
+                    form.append(
+                        "swbReleaseDocument",
+                        extras.swbReleaseDocument,
+                        extras.swbReleaseDocument.name
+                    );
+                }
+                extras?.deleteDocumentTypes?.forEach((documentType) =>
+                    form.append("delete_document_types[]", documentType)
+                );
 
                 const { data } = await apiClient.put(
                     `/api/admin/vehicles/edit/${vehicle.id}/${

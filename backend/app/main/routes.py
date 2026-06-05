@@ -14,7 +14,9 @@ def main_get_user_vehicles(sub):
 
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 10, type=int)
@@ -97,7 +99,9 @@ def main_get_user_vehicles(sub):
 def main_get_user(sub):
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         user = User.query.filter_by(cognito_sub=sub).first()
         if not user:
@@ -124,7 +128,9 @@ def main_get_user(sub):
 def main_get_specific_vehicle(sub,vehicle_id):
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         vehicle = (
             Vehicle.query

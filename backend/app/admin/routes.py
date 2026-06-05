@@ -366,7 +366,10 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
     return success_response({"vehicle": v_dict})
 
 @admin_bp.post("/vehicles/decode-vin/<string:vin>")
+@cognito_auth_required(["Admin"])
 def decode_vin(vin: str):
+
+    
 
     raw = vpic.decode_vin(vin, flatten=True)   # returns a dict
     fuel_primary   = raw.get("FuelTypePrimary", "").lower()

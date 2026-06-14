@@ -8,6 +8,7 @@ import {
 } from "react";
 import JSZip from "jszip";
 import { XMarkIcon } from "@heroicons/react/20/solid";
+import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { IMAGE_FILE_ACCEPT, MEDIA_FILE_ACCEPT } from "../../src/config/fileTypes";
 
@@ -93,6 +94,8 @@ const getNameFromPath = (value?: string) => {
 };
 
 const getFileKey = (f: File) => `${f.name}-${f.lastModified}-${f.size}`;
+const hasDraggedFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types).includes("Files");
 
 const reorderArray = <T,>(items: T[], from: number, to: number) => {
     if (from === to) return items;
@@ -119,9 +122,11 @@ export default function ZipImagePreviewer({
     const { t } = useTranslation();
 
     const [urlMap, setUrlMap] = useState<Map<string, string>>(new Map());
+    const [isDropActive, setIsDropActive] = useState(false);
     const [dragOverKey, setDragOverKey] = useState<string | null>(null);
     const [draggingKey, setDraggingKey] = useState<string | null>(null);
     const dragState = useRef<DragState | null>(null);
+    const dropZoneDragDepth = useRef(0);
 
     const mediaItems = useMemo<MediaItem[]>(() => {
         const imageItems = files.map((file) => ({ file, kind: "image" as const }));
@@ -145,8 +150,7 @@ export default function ZipImagePreviewer({
         return candidate;
     }
 
-    const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const pickedFiles = Array.from(e.target.files ?? []);
+    const addPickedFiles = async (pickedFiles: File[]) => {
         if (pickedFiles.length === 0) return;
 
         const existing = new Set(
@@ -218,8 +222,46 @@ export default function ZipImagePreviewer({
         if (incomingVideos.length > 0 && setVideos) {
             setVideos((prev) => [...prev, ...incomingVideos]);
         }
+    };
+
+    const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        await addPickedFiles(Array.from(e.target.files ?? []));
 
         e.target.value = "";
+    };
+
+    const handleDropZoneDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(e)) return;
+
+        e.preventDefault();
+        dropZoneDragDepth.current += 1;
+        setIsDropActive(true);
+    };
+
+    const handleDropZoneDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(e)) return;
+
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setIsDropActive(true);
+    };
+
+    const handleDropZoneDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(e)) return;
+
+        dropZoneDragDepth.current = Math.max(0, dropZoneDragDepth.current - 1);
+        if (dropZoneDragDepth.current === 0) {
+            setIsDropActive(false);
+        }
+    };
+
+    const handleDroppedFiles = async (e: React.DragEvent<HTMLDivElement>) => {
+        if (!hasDraggedFiles(e)) return;
+
+        e.preventDefault();
+        dropZoneDragDepth.current = 0;
+        setIsDropActive(false);
+        await addPickedFiles(Array.from(e.dataTransfer.files));
     };
 
     useEffect(() => {
@@ -315,14 +357,34 @@ export default function ZipImagePreviewer({
     }, [disableThumbnailSelection, files, setThumbnail, thumbnail]);
 
     return (
-        <div className="space-y-4">
-            <input
-                type="file"
-                accept={allowVideos ? MEDIA_FILE_ACCEPT : `.zip,${IMAGE_FILE_ACCEPT}`}
-                multiple
-                onChange={handleSelect}
-                className="block w-full text-sm text-gray-700"
-            />
+        <div
+            className="space-y-4"
+            onDragEnter={handleDropZoneDragEnter}
+            onDragOver={handleDropZoneDragOver}
+            onDragLeave={handleDropZoneDragLeave}
+            onDrop={handleDroppedFiles}
+        >
+            <label
+                className={`flex cursor-pointer items-center justify-center gap-3 rounded-md border border-dashed px-4 py-5 text-sm transition-colors ${
+                    isDropActive
+                        ? "border-primary bg-primary-100/40 text-primary"
+                        : "border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400 hover:bg-white"
+                }`}
+            >
+                <ArrowUpTrayIcon className="size-5 shrink-0" />
+                <span className="font-medium">
+                    {isDropActive
+                        ? "Drop media here"
+                        : "Drag media here or choose files"}
+                </span>
+                <input
+                    type="file"
+                    accept={allowVideos ? MEDIA_FILE_ACCEPT : `.zip,${IMAGE_FILE_ACCEPT}`}
+                    multiple
+                    onChange={handleSelect}
+                    className="sr-only"
+                />
+            </label>
 
             {mediaItems.length > 0 && (
                 <div className="relative max-h-[32rem] overflow-y-auto border border-gray-200 rounded-lg p-4 shadow-sm">

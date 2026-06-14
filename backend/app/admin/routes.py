@@ -1,7 +1,7 @@
 from datetime import date
 from flask import Blueprint, json, request
 from app.decorators import cognito_auth_required
-from app.utils import success_response, error_response, add_file, create_thumbnail, get_vehicle_thumbnail_filename, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_documents
+from app.utils import success_response, error_response, add_file, check_sub, create_thumbnail, get_vehicle_thumbnail_filename, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_documents
 from app.cognito import cognito_client, s3_client
 from app.config import Config
 from app.models import User, Vehicle
@@ -368,8 +368,6 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
 @admin_bp.post("/vehicles/decode-vin/<string:vin>")
 @cognito_auth_required(["Admin"])
 def decode_vin(vin: str):
-
-    
 
     raw = vpic.decode_vin(vin, flatten=True)   # returns a dict
     fuel_primary   = raw.get("FuelTypePrimary", "").lower()

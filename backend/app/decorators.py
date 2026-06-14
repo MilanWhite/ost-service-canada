@@ -1,7 +1,33 @@
 from functools import wraps
+from time import perf_counter
 from flask import request
+from app.config import Config
 from app.utils import error_response
 from app.verify_tokens import verify_jwt
+
+
+def time_api_call(name: str | None = None):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not Config.PAGE_TIMERS_ENABLED:
+                return f(*args, **kwargs)
+
+            started_at = perf_counter()
+            try:
+                return f(*args, **kwargs)
+            finally:
+                elapsed_ms = (perf_counter() - started_at) * 1000
+                api_name = name or request.endpoint or f.__name__
+
+                print(
+                    f"[api_timer] api={api_name} "
+                    f"method={request.method} path={request.path} "
+                    f"elapsed_ms={elapsed_ms:.2f}"
+                )
+
+        return wrapper
+    return decorator
 
 def cognito_auth_required(required_groups: list[str] | None = None):
     # Decorator to verify a Cognito JWT and enforce Cognito-group membership.

@@ -3,15 +3,15 @@ from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
 from app.utils import success_response, error_response, get_vehicle_thumbnail_filename, check_sub, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_document, get_vehicle_documents
-from app.decorators import cognito_auth_required
+from app.decorators import cognito_auth_required, time_api_call
 
 main_bp = Blueprint('main', __name__)
 
 # requires pagination
 @main_bp.route("/<string:sub>/vehicles", methods=["GET"])
+@time_api_call("vehicle_list")
 @cognito_auth_required(["Admin", "RegularUser"])
 def main_get_user_vehicles(sub):
-
     try:
 
         auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)

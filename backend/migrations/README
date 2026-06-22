@@ -1,1 +1,33 @@
 Single-database configuration for Flask.
+
+See ``MIGRATIONS.md`` for the complete command and deployment runbook.
+
+Schema lifecycle
+----------------
+
+Alembic migrations are the only supported way to create or change the database
+schema. Application startup intentionally does not call ``db.create_all()``.
+
+New empty database
+~~~~~~~~~~~~~~~~~~
+
+From the ``backend`` directory, with ``DATABASE_URL`` configured for the target
+database, run::
+
+    flask --app app:create_app db upgrade
+
+Existing database that already matches the baseline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Do not run the baseline upgrade over existing tables. First take a database
+backup and verify that its tables, columns, constraints, and indexes match the
+baseline revision. Then record the baseline without executing its DDL::
+
+    flask --app app:create_app db stamp 20260621_base_schema
+
+After the database has been stamped, future revisions can be applied normally
+with ``flask --app app:create_app db upgrade``.
+
+Never stamp a database merely to bypass a failed migration. A stamp asserts
+that the target database already has exactly the schema represented by that
+revision.

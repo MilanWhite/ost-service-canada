@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import ARRAY, TEXT, CheckConstraint, Computed
+from sqlalchemy import ARRAY, TEXT, CheckConstraint, Computed, UniqueConstraint
 from app.extensions import db
 
 class User(db.Model):
     __tablename__ = "users"
+    __table_args__ = (
+        db.Index("ix_users_created_at", "created_at"),
+    )
 
     cognito_sub  = db.Column(db.String(255), primary_key=True)
 
@@ -33,6 +36,18 @@ class User(db.Model):
 class Vehicle(db.Model):
     __tablename__ = "vehicles"
     __table_args__ = (
+        db.Index(
+            "ix_vehicles_cognito_sub_created_at",
+            "cognito_sub",
+            "created_at",
+        ),
+        db.Index(
+            "ix_vehicles_cognito_sub_shipping_status_created_at",
+            "cognito_sub",
+            "shipping_status",
+            "created_at",
+        ),
+        db.Index("ix_vehicles_created_at", "created_at"),
         CheckConstraint(
             "shipping_status IN ('Delivered', 'Not delivered')",
             name="ck_vehicles_shipping_status",
@@ -92,6 +107,19 @@ class Vehicle(db.Model):
     )
 
     owner = db.relationship("User", back_populates="vehicles")
+    images = db.relationship(
+        "VehicleImage",
+        back_populates="vehicle",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="VehicleImage.sort_order",
+    )
+    media = db.relationship(
+        "VehicleMedia",
+        back_populates="vehicle",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def to_dict(self):
         return {
@@ -122,3 +150,74 @@ class Vehicle(db.Model):
             "receiver_id":          self.receiver_id,
             "image_order":          self.image_order,
         }
+
+
+class VehicleImage(db.Model):
+    __tablename__ = "vehicle_images"
+
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vehicles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    original_filename = db.Column(db.String(255), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    vehicle = db.relationship("Vehicle", back_populates="images")
+    variants = db.relationship(
+        "VehicleImageVariant",
+        back_populates="image",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class VehicleImageVariant(db.Model):
+    __tablename__ = "vehicle_image_variants"
+    __table_args__ = (
+        UniqueConstraint(
+            "vehicle_image_id",
+            "variant",
+            name="uq_vehicle_image_variants_image_variant",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_image_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vehicle_images.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    variant = db.Column(db.String(20), nullable=False)
+    s3_key = db.Column(db.Text, nullable=False, unique=True)
+    width = db.Column(db.Integer)
+    height = db.Column(db.Integer)
+    content_type = db.Column(db.String(100))
+    size_bytes = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    image = db.relationship("VehicleImage", back_populates="variants")
+
+
+class VehicleMedia(db.Model):
+    __tablename__ = "vehicle_media"
+
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vehicles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    media_type = db.Column(db.String(20), nullable=False)
+    s3_key = db.Column(db.Text, nullable=False, unique=True)
+    original_filename = db.Column(db.String(255))
+    document_type = db.Column(db.String(80))
+    variant = db.Column(db.String(20))
+    content_type = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    vehicle = db.relationship("Vehicle", back_populates="media")

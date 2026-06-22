@@ -2,7 +2,12 @@ from flask import Blueprint, request
 from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
-from app.utils import success_response, error_response, get_vehicle_thumbnail_filename, check_sub, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_document, get_vehicle_documents
+from app.media import (
+    attach_vehicle_media,
+    build_vehicle_response,
+    vehicle_media_rows_by_vehicle_id,
+)
+from app.utils import success_response, error_response, check_sub
 from app.decorators import cognito_auth_required, time_api_call
 
 main_bp = Blueprint('main', __name__)
@@ -70,13 +75,18 @@ def main_get_user_vehicles(sub):
                 )
 
         pagination = vehicles.paginate(page=page, per_page=per_page, error_out=False)
-        vehicles_list = [v.to_dict() for v in pagination.items]
-
-        # get all vehicle thumbnails
+        vehicle_rows = pagination.items
+        vehicles_list = [v.to_dict() for v in vehicle_rows]
+        media_by_vehicle_id = vehicle_media_rows_by_vehicle_id(
+            [vehicle.id for vehicle in vehicle_rows]
+        )
 
         for vehicle in vehicles_list:
-            vehicle["vehicleThumbnail"], vehicle["vehicleThumbnailMobile"] = get_vehicle_thumbnails(vehicle["cognito_sub"], vehicle["id"])
-            vehicle.update(get_vehicle_documents(vehicle["cognito_sub"], vehicle["id"]))
+            attach_vehicle_media(
+                vehicle,
+                media_by_vehicle_id.get(vehicle["id"], []),
+                include_videos=False,
+            )
 
         return success_response({
             "vehicles": vehicles_list,
@@ -140,22 +150,11 @@ def main_get_specific_vehicle(sub,vehicle_id):
         if not vehicle:
             return error_response("Vehicle not found", 404)
 
-        vehicle = vehicle.to_dict()
-
-        image_order = vehicle["image_order"] or []
-
-        vehicle["vehicleImages"], vehicle["vehicleVideos"] = get_all_vehicle_images(sub, vehicle_id, image_order=image_order)
-
-        vehicle["vehicleThumbnail"], vehicle["vehicleThumbnailMobile"] = get_vehicle_thumbnails(sub, vehicle_id)
-        vehicle["vehicleThumbnailName"] = get_vehicle_thumbnail_filename(sub, vehicle_id)
-
-        vehicle["vehicleBillOfSaleDocument"] = get_vehicle_document(sub, vehicle_id, "bill_of_sale_document")
-
-        vehicle["vehicleTitleDocument"] = get_vehicle_document(sub, vehicle_id, "title_document")
-
-        vehicle["vehicleBillOfLadingDocument"] = get_vehicle_document(sub, vehicle_id, "bill_of_lading_document")
-
-        vehicle["vehicleSWBReleaseDocument"] = get_vehicle_document(sub, vehicle_id, "swb_release_document")
+        vehicle = build_vehicle_response(
+            vehicle,
+            include_images=True,
+            include_videos=True,
+        )
 
         return success_response({"vehicle": vehicle})
 

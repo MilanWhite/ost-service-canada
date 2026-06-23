@@ -23,7 +23,7 @@ export function useGetVehicles(
     vehiclesLoading: boolean;
     vehiclesError: string | null;
     setPage: (page: number) => void;
-    vehicleRefetch: () => void;
+    vehicleRefetch: () => Promise<void>;
 } {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [page, setPageState] = useState(1);
@@ -59,7 +59,7 @@ export function useGetVehicles(
 
                 setVehicles(resp.data.message.vehicles);
                 setMeta(resp.data.message.meta);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (err instanceof CanceledError) return;
 
                 setVehiclesError("AuthenticatedView.Errors.failed_to_load_vehicles");

@@ -74,7 +74,9 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("eta", createVehicleInfo.eta);
 
             createVehicleMedia.images.forEach((file) => formData.append("images", file, file.name))
-            {createVehicleMedia.thumbnail && formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)}
+            if (createVehicleMedia.thumbnail) {
+                formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)
+            }
             createVehicleMedia.videos.forEach((file) => formData.append("videos", file, file.name))
 
             if (createVehicleMedia.billOfSaleDocument) {
@@ -91,13 +93,21 @@ const useCreateVehicleForm = (user: User) => {
             }
 
             setCreateVehicleLoading(true);
-            await apiClient.post(`/api/admin/vehicles/${user.sub}/create-vehicle`, formData);
+            await apiClient.post(
+                `/api/admin/vehicles/${user.sub}/create-vehicle`,
+                formData,
+                { timeout: 0 }
+            );
             setCreateVehicleError(null);
             setShowCreateVehicleSuccess(true);
             closeCreateVehicle();
-            vehicleRefetch();
+            try {
+                await vehicleRefetch();
+            } catch {
+                // Creation succeeded; a refresh failure should not show a create error.
+            }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setCreateVehicleError("AuthenticatedView.Errors.failed_to_create_vehicle");

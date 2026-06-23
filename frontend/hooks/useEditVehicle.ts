@@ -60,15 +60,19 @@ export function useEditVehicle(
                 const form = new FormData();
                 form.append("payload", JSON.stringify(vehicle));
 
-                extras?.newImages?.forEach((file) =>
-                    form.append("new_images", file, file.name)
-                );
                 extras?.imageOrder?.forEach(name =>
                     form.append("image_order[]", name)
                 );
 
                 extras?.deleteKeys?.forEach((k) =>
                     form.append("delete_keys[]", k)
+                );
+                extras?.deleteDocumentTypes?.forEach((documentType) =>
+                    form.append("delete_document_types[]", documentType)
+                );
+
+                extras?.newImages?.forEach((file) =>
+                    form.append("new_images", file, file.name)
                 );
                 if (extras?.newThumbnail) {
                     form.append("new_thumbnail", extras?.newThumbnail)
@@ -101,15 +105,13 @@ export function useEditVehicle(
                         extras.swbReleaseDocument.name
                     );
                 }
-                extras?.deleteDocumentTypes?.forEach((documentType) =>
-                    form.append("delete_document_types[]", documentType)
-                );
 
                 const { data } = await apiClient.put(
                     `/api/admin/vehicles/edit/${vehicle.id}/${
                         onSingularVehiclePage ? 1 : 0
                     }`,
-                    form
+                    form,
+                    { timeout: 0 }
                 );
 
                 setVehicle(data.message.vehicle);

@@ -1,125 +1,95 @@
+const SkeletonBlock = ({ className }: { className: string }) => (
+    <div className={`rounded bg-gray-200 ${className}`} />
+);
+
+const DashboardVehicleListSkeleton = () => (
+    <div className="flex flex-col animate-pulse">
+        <SkeletonBlock className="h-5 w-48" />
+        <div className="mt-4 rounded-lg border border-gray-200 px-5 shadow-sm">
+            <ul role="list" className="divide-y divide-gray-100">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <li
+                        key={index}
+                        className="flex justify-between gap-x-6 py-5"
+                    >
+                        <div className="flex min-w-0 gap-x-4">
+                            <SkeletonBlock className="h-12 w-12 rounded-sm" />
+                            <div className="min-w-0 flex-auto space-y-2">
+                                <SkeletonBlock className="h-4 w-40" />
+                                <SkeletonBlock className="h-3 w-28" />
+                            </div>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end justify-center">
+                            <SkeletonBlock className="h-4 w-12" />
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    </div>
+);
+
 export default function AdminDashboardSkeleton() {
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 grid-rows-[auto,1fr]">
-            {/* ────────────────────────── TOP ROW ────────────────────────── */}
-            <div className="md:col-span-2 flex gap-6 animate-pulse">
-                {/* ── AdminOverview skeleton (¾ width on 2xl) ── */}
-                <div className="basis-full 2xl:basis-3/4 space-y-6">
-                    {/* Overview heading */}
-                    <div className="h-8 w-48 bg-gray-200 rounded" />
-                    <div className="h-5 w-15 bg-gray-200 rounded" />
-
-                    {/* Stats grid: 4 cards */}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-gray-900/5">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className="h-24 sm:h-32 bg-white px-8 py-4 space-y-4"
-                            >
-                                <div className="h-4 w-24 bg-gray-200 rounded" />
-                                <div className="h-8 w-12 bg-gray-200 rounded" />
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Recent users (hidden on xs just like real comp) */}
-                    <div className="mt-10 hidden sm:block space-y-4">
-                        <div className="h-5 w-35 bg-gray-200 rounded" />
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {Array.from({ length: 4 }).map((_, i) => (
+            <div className="md:col-span-2 flex gap-6">
+                <div className="basis-4/4 2xl:basis-3/4 animate-pulse">
+                    <SkeletonBlock className="h-9 w-48" />
+                    <div className="mt-4">
+                        <SkeletonBlock className="h-5 w-16" />
+                        <dl className="mx-auto mt-4 grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4">
+                            {Array.from({ length: 4 }).map((_, index) => (
                                 <div
-                                    key={i}
-                                    className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-white px-6 py-5 shadow-sm"
+                                    key={index}
+                                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 bg-white px-4 py-4 sm:px-6 sm:py-10 xl:px-8"
                                 >
-                                    <div className="shrink-0">
-                                        <div className="size-10 rounded-full bg-gray-200" />
-                                    </div>
-                                    <div className="flex-1 space-y-2">
-                                        <div className="h-4 w-32 bg-gray-200 rounded" />
-                                        <div className="h-3 w-48 bg-gray-200 rounded" />
+                                    <SkeletonBlock className="h-4 w-28" />
+                                    <SkeletonBlock className="h-8 w-14 flex-none" />
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                    <div className="mt-4 hidden sm:block">
+                        <SkeletonBlock className="h-5 w-32" />
+                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <div
+                                    key={index}
+                                    className="relative flex items-center space-x-3 rounded-lg border border-gray-200 bg-white px-6 py-5 shadow-sm"
+                                >
+                                    <SkeletonBlock className="size-10 rounded-full" />
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <SkeletonBlock className="h-4 w-32" />
+                                        <SkeletonBlock className="h-4 w-48 max-w-full" />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
-
-                {/* ── ActivityFeed skeleton (¼ width on 2xl) ── */}
-                <div className="mt-14 hidden 2xl:block basis-1/4 space-y-6 animate-pulse">
-                    <div className="h-5 w-32 bg-gray-200 rounded" />
-                    <ul role="list" className="space-y-8 pl-8">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <li key={i} className="flex space-x-3">
-                                <div className="size-8 rounded-full bg-gray-200 ring-8 ring-white" />
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-3 w-3/4 bg-gray-200 rounded" />
-                                    <div className="h-3 w-1/3 bg-gray-200 rounded" />
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                <div className="hidden 2xl:block basis-1/4 animate-pulse">
+                    <SkeletonBlock className="mt-13 h-5 w-32" />
+                    <div className="flow-root p-6">
+                        <ul role="list" className="-mb-8">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                                <li key={index}>
+                                    <div className="relative pb-8">
+                                        <div className="relative flex space-x-3">
+                                            <SkeletonBlock className="size-8 rounded-full ring-8 ring-white" />
+                                            <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                                                <SkeletonBlock className="h-4 w-3/4" />
+                                                <SkeletonBlock className="h-4 w-10" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             </div>
-
-            {/* ────────────────────────── BOTTOM LEFT ────────────────────────── */}
-            <div className="flex flex-col space-y-4 animate-pulse">
-                {/* Title */}
-                <div className="h-5 w-48 bg-gray-200 rounded" />
-                {/* Vehicle rows */}
-                <ul
-                    role="list"
-                    className="divide-y divide-gray-100 rounded-lg border border-gray-200 shadow-sm"
-                >
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <li
-                            key={i}
-                            className="flex justify-between gap-x-6 py-5 px-5"
-                        >
-                            <div className="flex min-w-0 gap-x-4">
-                                <div className="w-12 h-12 rounded-sm bg-gray-200" />
-                                <div className="min-w-0 flex-auto space-y-2">
-                                    <div className="h-4 w-40 bg-gray-200 rounded" />
-                                    <div className="h-3 w-24 bg-gray-200 rounded" />
-                                </div>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="h-4 w-12 bg-gray-200 rounded" />
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-
-            {/* ────────────────────────── BOTTOM RIGHT ────────────────────────── */}
-            <div className="flex flex-col space-y-4 animate-pulse">
-                {/* Title */}
-                <div className="h-5 w-48 bg-gray-200 rounded" />
-                {/* Vehicle rows */}
-                <ul
-                    role="list"
-                    className="divide-y divide-gray-100 rounded-lg border border-gray-200 shadow-sm"
-                >
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <li
-                            key={i}
-                            className="flex justify-between gap-x-6 py-5 px-5"
-                        >
-                            <div className="flex min-w-0 gap-x-4">
-                                <div className="w-12 h-12 rounded-sm bg-gray-200" />
-                                <div className="min-w-0 flex-auto space-y-2">
-                                    <div className="h-4 w-40 bg-gray-200 rounded" />
-                                    <div className="h-3 w-28 bg-gray-200 rounded" />
-                                </div>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="h-4 w-12 bg-gray-200 rounded" />
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            <DashboardVehicleListSkeleton />
+            <DashboardVehicleListSkeleton />
         </div>
     );
 }

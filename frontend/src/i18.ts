@@ -684,7 +684,7 @@ i18n.use(LanguageDetector)
                     AuthenticatedView: {
                         //  Top-level nav
                         dashboard: "Панель управления",
-                        client_manager: "Клиенты",
+                        client_manager: "Менеджер клиентов",
                         my_vehicles: "Мои автомобили",
 
                         // Overview & stats
@@ -1128,7 +1128,7 @@ i18n.use(LanguageDetector)
                     AuthenticatedView: {
                         //  Top-level nav
                         dashboard: "Панель керування",
-                        client_manager: "Клієнти",
+                        client_manager: "Менеджер клієнтів",
                         my_vehicles: "Мої автомобілі",
 
                         // Overview & stats

@@ -1,67 +1,89 @@
 interface Props {
     appear_size?: string;
+    type?: "Admin" | "User";
 }
 
-export default function VehicleCardSkeleton({ appear_size }: Props) {
+const SkeletonBlock = ({ className }: { className: string }) => (
+    <div className={`rounded bg-gray-200 ${className}`} />
+);
+
+export default function VehicleCardSkeleton({
+    appear_size,
+    type = "User",
+}: Props) {
     return (
-        <div className={appear_size && `hidden ${appear_size}:block`}>
+        <div className={appear_size ? `hidden ${appear_size}:block` : ""}>
             <section aria-hidden className="mt-6">
-                {/* hidden heading still useful for layout spacing if needed */}
-                <h2 className="sr-only">Vehicle info skeleton</h2>
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs sm:relative animate-pulse">
+                    <div className="hidden px-4 pt-4 text-sm sm:absolute sm:top-4 sm:right-6 sm:block sm:px-0 sm:pt-0 sm:text-right">
+                        <SkeletonBlock className="h-4 w-24" />
+                        <SkeletonBlock className="mt-1 h-4 w-20" />
+                    </div>
 
-                <div className="sm:relative border-t border-b border-gray-200 bg-white shadow-xs sm:rounded-lg sm:border animate-pulse">
-                    <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 lg:grid lg:grid-cols-12 lg:gap-x-6 lg:p-5">
-                        {/* ───────────────── LEFT: image + basic info ───────────────── */}
-                        <div className="sm:flex lg:col-span-5">
-                            {/* square image placeholder */}
-                            <div className="aspect-square w-full shrink-0 rounded-lg bg-gray-200 sm:size-32" />
-
-                            {/* name + prices */}
-                            <div className="mt-3 sm:mt-0 sm:ml-5 flex-1 space-y-3">
-                                <div className="h-4 w-3/4 bg-gray-200 rounded" />{" "}
-                                {/* vehicle name */}
-                                <div className="h-3 w-1/2 bg-gray-200 rounded" />{" "}
-                                {/* price delivery */}
-                                <div className="h-3 w-1/2 bg-gray-200 rounded" />{" "}
-                                {/* price shipping */}
+                    <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 lg:grid lg:grid-cols-12 lg:gap-x-4 lg:p-5">
+                        <div className="sm:flex lg:col-span-4">
+                            <SkeletonBlock className="aspect-square w-full shrink-0 rounded-lg sm:size-32" />
+                            <div className="mt-3 flex-1 sm:mt-0 sm:ml-5">
+                                <SkeletonBlock className="h-5 w-3/4" />
+                                <SkeletonBlock className="mt-1 h-4 w-36 sm:hidden" />
+                                <SkeletonBlock className="mt-3 h-9 w-32 rounded-md" />
                             </div>
                         </div>
 
-                        {/* ───────────────── RIGHT: details ───────────────── */}
-                        <div className="mt-5 lg:col-span-7 lg:mt-0 lg:pr-36">
+                        <div className="mt-5 lg:col-span-8 lg:mt-0 lg:pr-28 xl:pr-36">
                             <dl className="grid grid-cols-1 gap-x-6 text-sm">
-                                <div className="space-y-4 lg:flex lg:space-x-10">
-                                    {/* Location / Auction / Lot # */}
-                                    <div className="lg:w-50 space-y-2">
-                                        <div className="h-3 mb-4 w-40 bg-gray-200 rounded" />
-                                        <div className="h-3 w-24 bg-gray-200 rounded" />
-                                        <div className="h-3 w-32 bg-gray-200 rounded" />
-                                        <div className="h-3 w-20 bg-gray-200 rounded" />
+                                <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:space-y-0 xl:gap-x-12">
+                                    <div className="min-w-0">
+                                        <SkeletonBlock className="h-4 w-24" />
+                                        <div className="mt-3 space-y-1">
+                                            {Array.from({ length: 4 }).map(
+                                                (_, index) => (
+                                                    <SkeletonBlock
+                                                        key={index}
+                                                        className="h-4 w-32"
+                                                    />
+                                                )
+                                            )}
+                                        </div>
                                     </div>
-
-                                    {/* Logistics / Dispatch Info (hidden on lg breakpoint exactly as real comp) */}
-                                    <div className="lg:w-70 space-y-2 block lg:hidden xl:block">
-                                        <div className="h-3 mb-4 w-40 bg-gray-200 rounded" />
-                                        <div className="h-3 w-15 bg-gray-200 rounded" />
-                                        <div className="h-3 w-26 bg-gray-200 rounded" />
-                                        <div className="h-3 w-18 bg-gray-200 rounded" />
-                                        <div className="h-3 w-22 bg-gray-200 rounded" />
-                                        <div className="h-3 w-12 bg-gray-200 rounded" />
+                                    <div className="block min-w-0 lg:hidden xl:block">
+                                        <SkeletonBlock className="h-4 w-40" />
+                                        <div className="mt-3 space-y-1">
+                                            {Array.from({ length: 4 }).map(
+                                                (_, index) => (
+                                                    <SkeletonBlock
+                                                        key={index}
+                                                        className="h-4 w-36"
+                                                    />
+                                                )
+                                            )}
+                                        </div>
                                     </div>
-
-                                    {/* Status */}
-                                    <div className="lg:w-50 space-y-2">
-                                        <div className="h-3 mb-4 w-28 bg-gray-200 rounded" />
-                                        <div className="h-3 w-20 bg-gray-200 rounded" />
+                                    <div className="min-w-0">
+                                        <SkeletonBlock className="h-4 w-24" />
+                                        <div className="mt-3 space-y-1">
+                                            {Array.from({ length: 4 }).map(
+                                                (_, index) => (
+                                                    <SkeletonBlock
+                                                        key={index}
+                                                        className="h-4 w-36"
+                                                    />
+                                                )
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </dl>
                         </div>
                     </div>
 
-                    {/* bottom‑right “View” button placeholder */}
                     <div className="px-4 pb-4 sm:absolute sm:right-5 sm:bottom-5 sm:px-0 sm:pb-0">
-                        <div className="h-8 w-24 bg-gray-200 rounded" />
+                        <div className="mt-2 flex flex-col gap-3 sm:mt-0 sm:flex-row-reverse">
+                            <SkeletonBlock className="h-9 w-full rounded-md sm:w-16" />
+                            {type === "Admin" && (
+                                <SkeletonBlock className="h-9 w-full rounded-md sm:w-14" />
+                            )}
+                        </div>
                     </div>
                 </div>
             </section>

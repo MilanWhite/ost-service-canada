@@ -2,6 +2,7 @@ import { DashboardNavigation } from "../GenericDashboardWrapper";
 import Logo from "../../Logo";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import SidebarChildLinks from "../SidebarChildLinks";
 
 
 interface Props {
@@ -55,6 +56,13 @@ const DesktopSidebar = ({ dashboardNavigation, homeURL }: Props) => {
                                                 />
                                                 {t(item.name as string)}
                                             </Link>
+                                            {item.children && (
+                                                <SidebarChildLinks
+                                                    childrenLinks={
+                                                        item.children
+                                                    }
+                                                />
+                                            )}
                                         </li>
                                     ))}
                                 </ul>

@@ -11,6 +11,15 @@ export interface DashboardNavigation {
         Omit<React.SVGProps<SVGSVGElement>, "ref">
     >;
     current?: boolean;
+    children?: DashboardNavigationChild[];
+}
+
+export interface DashboardNavigationChild {
+    name: string;
+    href: string;
+    current?: boolean;
+    imageSrc?: string;
+    label?: string;
 }
 
 export interface DashboardUserNavigation {

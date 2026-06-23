@@ -3,8 +3,16 @@ import apiClient from "../services/api-client";
 import { User } from "./interfaces"
 import { CanceledError } from "axios";
 
+let usersCache: User[] = [];
+const usersListeners = new Set<(users: User[]) => void>();
+
+const updateUsersCache = (users: User[]) => {
+    usersCache = users;
+    usersListeners.forEach((listener) => listener(usersCache));
+};
+
 export function useGetAllUsers() {
-    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [allUsers, setAllUsers] = useState<User[]>(usersCache);
     const [getAllUsersLoading, setAllUsersLoading] = useState<boolean>(false);
     const [getAllUsersError, setGetAllUsersError] = useState<string | null>(null);
 
@@ -14,7 +22,7 @@ export function useGetAllUsers() {
     try {
         const response = await apiClient.get("/api/admin/users/get-all-users");
 
-        setAllUsers(response.data.message.users);
+        updateUsersCache(response.data.message.users);
     } catch (err: unknown) {
         if (err instanceof CanceledError) return;
 
@@ -25,7 +33,12 @@ export function useGetAllUsers() {
     }, []);
 
     useEffect(() => {
+        usersListeners.add(setAllUsers);
         fetchUsers();
+
+        return () => {
+            usersListeners.delete(setAllUsers);
+        };
     }, [fetchUsers]);
 
     return {

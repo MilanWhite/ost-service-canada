@@ -10,6 +10,7 @@ interface ImportMetaEnv {
     readonly VITE_REDIRECT_SIGN_OUT?: string;
     readonly VITE_IMAGE_VIEWER_VARIANT?: "enhanced" | "bare";
     readonly VITE_VEHICLES_PER_PAGE?: string;
+    readonly VITE_HIDE_ADMIN_DASHBOARD?: string;
 }
 
 interface ImportMeta {

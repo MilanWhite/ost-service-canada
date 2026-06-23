@@ -10,6 +10,7 @@ import {
 } from "@headlessui/react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import SidebarChildLinks from "../SidebarChildLinks";
 
 interface Props {
     dashboardNavigation: DashboardNavigation[];
@@ -83,6 +84,11 @@ const MobileSidebar = ({
                                                 <li key={item.name}>
                                                     <Link
                                                         to={item.href}
+                                                        onClick={() =>
+                                                            setSidebarOpen(
+                                                                false
+                                                            )
+                                                        }
                                                         className={classNames(
                                                             item.current
                                                                 ? "bg-gray-50 text-primary"
@@ -101,6 +107,18 @@ const MobileSidebar = ({
                                                         />
                                                         {t(item.name as string)}
                                                     </Link>
+                                                    {item.children && (
+                                                        <SidebarChildLinks
+                                                            childrenLinks={
+                                                                item.children
+                                                            }
+                                                            onNavigate={() =>
+                                                                setSidebarOpen(
+                                                                    false
+                                                                )
+                                                            }
+                                                        />
+                                                    )}
                                                 </li>
                                             ))}
                                         </ul>

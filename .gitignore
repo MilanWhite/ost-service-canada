@@ -24,6 +24,10 @@ dist-ssr
 frontend/amplify/team-provider-info.json
 frontend/src/amplifyconfiguration.json
 
+/frontend/e2e/
+/frontend/playwright.config.ts
+/frontend/.env.e2e.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -38,3 +42,5 @@ frontend/src/amplifyconfiguration.json
 /private
 
 /scripts
+
+/migrate-db

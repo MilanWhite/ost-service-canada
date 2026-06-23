@@ -18,4 +18,9 @@ amplify-gradle-config.json
 amplifytools.xcconfig
 .secret-*
 **.sample
+.env.e2e.local
+playwright/.auth/
+playwright-report/
+test-results/
+blob-report/
 #amplify-do-not-edit-end

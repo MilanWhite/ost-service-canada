@@ -90,6 +90,18 @@ def cleanup_s3_keys(keys, description):
                 )
 
 
+def get_cognito_user_statuses():
+    statuses = {}
+    paginator = cognito_client.get_paginator("list_users")
+    for page in paginator.paginate(UserPoolId=Config.USER_POOL_ID):
+        for user in page.get("Users", []):
+            statuses[user["Username"]] = {
+                "status": user.get("UserStatus"),
+                "enabled": user.get("Enabled", False),
+            }
+    return statuses
+
+
 @admin_bp.route("/users/create-user", methods=["POST"])
 @cognito_auth_required(["Admin"])
 def admin_create_user():
@@ -196,11 +208,33 @@ def admin_delete_user(sub: str):
         db.session.rollback()
         return error_response(message=str(e), code=500)
 
+@admin_bp.route("/users/<string:sub>/resend-invite", methods=["POST"])
+@cognito_auth_required(["Admin"])
+def admin_resend_user_invite(sub: str):
+    try:
+        user = User.query.get(sub)
+        if user is None:
+            return error_response("User not found", 404)
+
+        cognito_client.admin_create_user(
+            UserPoolId=Config.USER_POOL_ID,
+            Username=sub,
+            MessageAction="RESEND",
+            DesiredDeliveryMediums=["EMAIL"],
+        )
+
+        return success_response()
+
+    except Exception as e:
+        print(str(e))
+        return error_response(message=str(e), code=500)
+
 @admin_bp.route("/users/get-all-users", methods=["GET"])
 @cognito_auth_required(["Admin"])
 def admin_get_all_users():
     try:
         users = User.query.order_by(User.name).all()
+        cognito_statuses = get_cognito_user_statuses()
 
         users_list = [
             {
@@ -208,6 +242,12 @@ def admin_get_all_users():
                 "username":  u.name,
                 "email": u.email,
                 "phone_number": u.phone_number,
+                "cognito_status": cognito_statuses.get(
+                    u.cognito_sub, {}
+                ).get("status"),
+                "cognito_enabled": cognito_statuses.get(
+                    u.cognito_sub, {}
+                ).get("enabled", False),
             }
             for u in users
         ]

@@ -1,4 +1,9 @@
-export const getAvatarSrc = (email?: string) => {
+interface AvatarColorOptions {
+  background?: string;
+  color?: string;
+}
+
+export const getAvatarSrc = (email?: string, options: AvatarColorOptions = {}) => {
   if (!email) return "";
 
   // 1) build initials as before
@@ -27,8 +32,8 @@ export const getAvatarSrc = (email?: string) => {
     `https://ui-avatars.com/api/` +
     `?name=${initials}` +
     `&size=80` +
-    `&background=${background}` +
-    `&color=${color}` +
+    `&background=${options.background ?? background}` +
+    `&color=${options.color ?? color}` +
     `&rounded=true`
   );
 };

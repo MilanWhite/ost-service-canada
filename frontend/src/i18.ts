@@ -276,6 +276,12 @@ i18n.use(LanguageDetector)
                         inviting_loading: "Inviting...",
                         invite_user_description:
                             "A temporary password will be sent to the email you provide, and the user can set up their account.",
+                        resend_email: "Resend email",
+                        resending: "Resending...",
+                        send_email: "Send email",
+                        resend_email_dialog_title: "Resend invite email",
+                        resend_email_dialog_description:
+                            "Send a new invitation email to {{email}} so they can finish setting up their account.",
                         company_name_name: "Company Name / Name",
                         email: "Email",
                         vehicles: "Vehicles",
@@ -397,6 +403,8 @@ i18n.use(LanguageDetector)
                         Success: {
                             user_invite_sent_successfully:
                                 "User invite sent successfully",
+                            user_invite_resent_successfully:
+                                "Invite email resent successfully",
                             vehicle_added_successfully:
                                 "Vehicle added successfully",
                         },
@@ -405,6 +413,8 @@ i18n.use(LanguageDetector)
                         Errors: {
                             username_required: "Username is required",
                             invalid_email_address: "Invalid email address",
+                            failed_to_resend_invite:
+                                "Failed to resend invite email",
 
                             vehicle_name_required: "Vehicle name is required",
                             lot_number_required: "Lot number is required",
@@ -709,6 +719,13 @@ i18n.use(LanguageDetector)
                         inviting_loading: "Приглашение...",
                         invite_user_description:
                             "Временный пароль будет отправлен на указанный email. Пользователь сможет настроить свой аккаунт.",
+                        resend_email: "Отправить email повторно",
+                        resending: "Отправка...",
+                        send_email: "Отправить email",
+                        resend_email_dialog_title:
+                            "Повторно отправить приглашение",
+                        resend_email_dialog_description:
+                            "Отправить новое письмо-приглашение на {{email}}, чтобы пользователь мог завершить настройку аккаунта.",
                         company_name_name: "Название компании / Имя",
                         email: "Электронная почта",
                         vehicles: "Автомобили",
@@ -830,6 +847,8 @@ i18n.use(LanguageDetector)
                         Success: {
                             user_invite_sent_successfully:
                                 "Приглашение отправлено успешно",
+                            user_invite_resent_successfully:
+                                "Письмо-приглашение успешно отправлено повторно",
                             vehicle_added_successfully:
                                 "Автомобиль успешно добавлен",
                         },
@@ -839,6 +858,8 @@ i18n.use(LanguageDetector)
                             username_required: "Имя пользователя обязательно",
                             invalid_email_address:
                                 "Неверный адрес электронной почты",
+                            failed_to_resend_invite:
+                                "Не удалось повторно отправить письмо-приглашение",
 
                             vehicle_name_required:
                                 "Название автомобиля обязательно",
@@ -1142,6 +1163,13 @@ i18n.use(LanguageDetector)
                         inviting_loading: "Надсилаємо запрошення...",
                         invite_user_description:
                             "Тимчасовий пароль буде надіслано на вказану електронну пошту. Користувач зможе налаштувати свій акаунт.",
+                        resend_email: "Надіслати email повторно",
+                        resending: "Надсилаємо...",
+                        send_email: "Надіслати email",
+                        resend_email_dialog_title:
+                            "Повторно надіслати запрошення",
+                        resend_email_dialog_description:
+                            "Надіслати новий лист-запрошення на {{email}}, щоб користувач міг завершити налаштування акаунта.",
                         company_name_name: "Назва компанії / Ім’я",
                         email: "Електронна пошта",
                         vehicles: "Автомобілі",
@@ -1263,6 +1291,8 @@ i18n.use(LanguageDetector)
                         Success: {
                             user_invite_sent_successfully:
                                 "Запрошення успішно надіслано",
+                            user_invite_resent_successfully:
+                                "Лист-запрошення успішно надіслано повторно",
                             vehicle_added_successfully: "Авто успішно додано",
                         },
 
@@ -1271,6 +1301,8 @@ i18n.use(LanguageDetector)
                             username_required:
                                 "Ім’я користувача є обов’язковим",
                             invalid_email_address: "Невірна електронна адреса",
+                            failed_to_resend_invite:
+                                "Не вдалося повторно надіслати лист-запрошення",
 
                             vehicle_name_required: "Назва авто є обов’язковою",
                             lot_number_required: "Номер лота є обов’язковим",

@@ -9,6 +9,8 @@ from app.media import (
 )
 from app.utils import success_response, error_response, check_sub
 from app.decorators import cognito_auth_required, time_api_call
+from app.cognito import cognito_client
+from app.config import Config
 
 main_bp = Blueprint('main', __name__)
 
@@ -124,6 +126,14 @@ def main_get_user(sub):
             "email":         user.email,
             "phone_number":  user.phone_number,
         }
+
+        if "Admin" in request.user["cognito:groups"]:
+            cognito_user = cognito_client.admin_get_user(
+                UserPoolId=Config.USER_POOL_ID,
+                Username=sub,
+            )
+            user_data["cognito_status"] = cognito_user.get("UserStatus")
+            user_data["cognito_enabled"] = cognito_user.get("Enabled", False)
 
         # 3. return
         return success_response({"user": user_data})

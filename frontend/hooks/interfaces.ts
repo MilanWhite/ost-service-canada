@@ -3,6 +3,8 @@ export interface User {
     username: string;
     email: string;
     phone_number: string;
+    cognito_status?: string | null;
+    cognito_enabled?: boolean;
 }
 
 export interface VehicleImageItem {

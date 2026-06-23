@@ -261,6 +261,7 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
                         onClick={() => {
                             setIsCarouselFullscreen(true);
                         }}
+                        className="cursor-pointer"
                     >
                         {isVideo ? (
                             <video

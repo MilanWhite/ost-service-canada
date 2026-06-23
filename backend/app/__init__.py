@@ -58,7 +58,4 @@ def create_app():
 
     app.register_blueprint(main_bp, url_prefix="/api/main")
 
-    with app.app_context():
-        db.create_all()
-
     return app

@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:typecheck": "tsc -p e2e/tsconfig.json",
+    "test:e2e:public": "playwright test --project=chromium-public --project=firefox-public --project=webkit-public --project=mobile-chromium-public --project=mobile-webkit-public",
+    "test:e2e:reset": "playwright test public/auth.spec.ts --project=chromium-public --grep \"password reset completes\"",
+    "test:e2e:chromium": "playwright test --project=chromium-app --project=chromium-lifecycle",
+    "test:e2e:headed": "playwright test --project=chromium-app --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
@@ -32,13 +40,17 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "dotenv": "^17.4.2",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "imapflow": "^1.4.2",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.26.1",
     "vite": "^6.3.5"

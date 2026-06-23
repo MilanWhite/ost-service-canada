@@ -28,6 +28,12 @@ class Config:
     S3_BUCKET          = os.getenv("S3_BUCKET")
 
     # Flags
+    PAGE_TIMERS_ENABLED = os.getenv("PAGE_TIMERS_ENABLED", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     DEBUG = True
     SESSION_COOKIE_SECURE   = False
     SESSION_COOKIE_SAMESITE = "Lax"

@@ -14,20 +14,23 @@ const useDecodeVin = () => {
     const [isDecoding, setDecoding] = useState(false);
 
     const decodeVin = async (vin: string) => {
-        if (vin.length !== 17 || /[IOQioq]/.test(vin)) {
+        const normalizedVin = vin.trim().toUpperCase();
+
+        if (normalizedVin.length !== 17 || /[IOQ]/.test(normalizedVin)) {
             setDecodeError("AuthenticatedView.Errors.invalid_vin");
             setDecodedVin(null);
-            return;
+            return false;
         }
 
         try {
             setDecoding(true);
             const { data } = await apiClient.post<DecodeVinResponse>(
-                `/api/admin/vehicles/decode-vin/${vin}`
+                `/api/admin/vehicles/decode-vin/${normalizedVin}`
             );
 
             setDecodedVin(data.message);
             setDecodeError(null);
+            return true;
         } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
@@ -35,6 +38,7 @@ const useDecodeVin = () => {
 
             setDecodeError(fallback);
             setDecodedVin(null);
+            return false;
         } finally {
             setDecoding(false);
         }

@@ -11,7 +11,6 @@ export interface CreateVehicleInfo {
     shippingStatus: string;
     priceDelivery: string;
     priceShipping: string;
-    vehicleName: string;
 
     deliveryAddress: string,
     portOfOrigin: string,
@@ -20,9 +19,15 @@ export interface CreateVehicleInfo {
     receiverId: string,
 
     vin: string;
+    modelYear: string;
+    make: string;
     powertrain: string;
     model: string;
     color: string;
+
+    destination: string;
+    etd: string;
+    eta: string;
 }
 
 export interface CreateVehicleMedia {
@@ -51,7 +56,6 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("shippingStatus", createVehicleInfo.shippingStatus);
             formData.append("priceDelivery", createVehicleInfo.priceDelivery);
             formData.append("priceShipping", createVehicleInfo.priceShipping);
-            formData.append("vehicleName", createVehicleInfo.vehicleName);
 
             formData.append("deliveryAddress", createVehicleInfo.deliveryAddress);
             formData.append("portOfOrigin", createVehicleInfo.portOfOrigin);
@@ -60,12 +64,19 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("receiverId", createVehicleInfo.receiverId);
 
             formData.append("vin", createVehicleInfo.vin);
+            formData.append("modelYear", createVehicleInfo.modelYear);
+            formData.append("make", createVehicleInfo.make);
             formData.append("powertrain", createVehicleInfo.powertrain);
             formData.append("model", createVehicleInfo.model);
             formData.append("color", createVehicleInfo.color);
+            formData.append("destination", createVehicleInfo.destination);
+            formData.append("etd", createVehicleInfo.etd);
+            formData.append("eta", createVehicleInfo.eta);
 
             createVehicleMedia.images.forEach((file) => formData.append("images", file, file.name))
-            {createVehicleMedia.thumbnail && formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)}
+            if (createVehicleMedia.thumbnail) {
+                formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)
+            }
             createVehicleMedia.videos.forEach((file) => formData.append("videos", file, file.name))
 
             if (createVehicleMedia.billOfSaleDocument) {
@@ -82,13 +93,21 @@ const useCreateVehicleForm = (user: User) => {
             }
 
             setCreateVehicleLoading(true);
-            await apiClient.post(`/api/admin/vehicles/${user.sub}/create-vehicle`, formData);
+            await apiClient.post(
+                `/api/admin/vehicles/${user.sub}/create-vehicle`,
+                formData,
+                { timeout: 0 }
+            );
             setCreateVehicleError(null);
             setShowCreateVehicleSuccess(true);
             closeCreateVehicle();
-            vehicleRefetch();
+            try {
+                await vehicleRefetch();
+            } catch {
+                // Creation succeeded; a refresh failure should not show a create error.
+            }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setCreateVehicleError("AuthenticatedView.Errors.failed_to_create_vehicle");

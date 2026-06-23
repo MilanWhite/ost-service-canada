@@ -1,18 +1,106 @@
-from flask import Blueprint, json, request
-from app.decorators import cognito_auth_required
-from app.utils import success_response, error_response, add_file, create_thumbnail, get_vehicle_thumbnail_filename, get_vehicle_thumbnails, get_all_vehicle_images
+from datetime import date
+import re
+from flask import Blueprint, current_app, json, request
+from app.decorators import cognito_auth_required, time_api_call
+from app.media import (
+    build_vehicle_response,
+    create_vehicle_document_media,
+    create_vehicle_image,
+    create_vehicle_video_media,
+    delete_s3_keys,
+    delete_vehicle_documents,
+    delete_vehicle_images_for_keys,
+    replace_vehicle_main_thumbnails,
+    S3UploadTransaction,
+    safe_upload_filename,
+    set_vehicle_image_order,
+    vehicle_s3_keys,
+)
+from app.utils import success_response, error_response
 from app.cognito import cognito_client, s3_client
 from app.config import Config
 from app.models import User, Vehicle
 from app.extensions import db
-from werkzeug.utils import secure_filename
-
-from urllib.parse import unquote, urlparse
 from vpic import Client
+
 
 admin_bp = Blueprint('admin', __name__)
 
 vpic = Client()
+
+VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+VIN_VALIDATION_ERROR = (
+    "VIN must contain exactly 17 letters or digits; I, O, and Q are not allowed"
+)
+
+
+def empty_to_none(value):
+    if value is None:
+        return None
+    value = value.strip() if isinstance(value, str) else value
+    return value or None
+
+
+def normalize_vin(value):
+    """Normalize and validate a VIN received from an untrusted client."""
+    if not isinstance(value, str):
+        raise ValueError(VIN_VALIDATION_ERROR)
+    vin = value.strip().upper()
+    if not VIN_PATTERN.fullmatch(vin):
+        raise ValueError(VIN_VALIDATION_ERROR)
+    return vin
+
+
+def parse_optional_float(value):
+    value = empty_to_none(value)
+    return float(value) if value is not None else None
+
+
+def parse_optional_date(value):
+    value = empty_to_none(value)
+    return date.fromisoformat(value) if value is not None else None
+
+
+def normalize_shipping_status(value):
+    return "Delivered" if value == "Delivered" else "Not delivered"
+
+
+def cleanup_s3_keys(keys, description):
+    """Best-effort S3 cleanup without masking the request's primary result."""
+    if not keys:
+        return
+    for attempt in range(1, 4):
+        try:
+            delete_s3_keys(keys)
+            return
+        except Exception:
+            if attempt == 3:
+                current_app.logger.exception(
+                    "Failed to clean up %s after %s attempts; keys=%s",
+                    description,
+                    attempt,
+                    list(keys),
+                )
+            else:
+                current_app.logger.warning(
+                    "Retrying cleanup of %s after attempt %s",
+                    description,
+                    attempt,
+                    exc_info=True,
+                )
+
+
+def get_cognito_user_statuses():
+    statuses = {}
+    paginator = cognito_client.get_paginator("list_users")
+    for page in paginator.paginate(UserPoolId=Config.USER_POOL_ID):
+        for user in page.get("Users", []):
+            statuses[user["Username"]] = {
+                "status": user.get("UserStatus"),
+                "enabled": user.get("Enabled", False),
+            }
+    return statuses
+
 
 @admin_bp.route("/users/create-user", methods=["POST"])
 @cognito_auth_required(["Admin"])
@@ -110,8 +198,6 @@ def admin_delete_user(sub: str):
             else:
                 break
 
-        Vehicle.query.filter_by(cognito_sub=sub).delete(synchronize_session=False)
-
         db.session.delete(user)
         db.session.commit()
 
@@ -122,11 +208,33 @@ def admin_delete_user(sub: str):
         db.session.rollback()
         return error_response(message=str(e), code=500)
 
+@admin_bp.route("/users/<string:sub>/resend-invite", methods=["POST"])
+@cognito_auth_required(["Admin"])
+def admin_resend_user_invite(sub: str):
+    try:
+        user = User.query.get(sub)
+        if user is None:
+            return error_response("User not found", 404)
+
+        cognito_client.admin_create_user(
+            UserPoolId=Config.USER_POOL_ID,
+            Username=sub,
+            MessageAction="RESEND",
+            DesiredDeliveryMediums=["EMAIL"],
+        )
+
+        return success_response()
+
+    except Exception as e:
+        print(str(e))
+        return error_response(message=str(e), code=500)
+
 @admin_bp.route("/users/get-all-users", methods=["GET"])
 @cognito_auth_required(["Admin"])
 def admin_get_all_users():
     try:
         users = User.query.order_by(User.name).all()
+        cognito_statuses = get_cognito_user_statuses()
 
         users_list = [
             {
@@ -134,6 +242,12 @@ def admin_get_all_users():
                 "username":  u.name,
                 "email": u.email,
                 "phone_number": u.phone_number,
+                "cognito_status": cognito_statuses.get(
+                    u.cognito_sub, {}
+                ).get("status"),
+                "cognito_enabled": cognito_statuses.get(
+                    u.cognito_sub, {}
+                ).get("enabled", False),
             }
             for u in users
         ]
@@ -168,114 +282,134 @@ def admin_get_specific_user(sub):
 @admin_bp.route("/vehicles/edit/<int:vehicle_id>/<int:on_singular_vehicle_page>", methods=["PUT"])
 @cognito_auth_required(["Admin"])
 def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
+    s3_transaction = S3UploadTransaction()
+    transaction_committed = False
+    try:
+        payload = json.loads(request.form["payload"])
+        new_files = request.files.getlist("new_images")
+        delete_keys = request.form.getlist("delete_keys[]")
 
-    # parse everything
-    payload = json.loads(request.form["payload"]) # trying to do payload from now on
-    new_files   = request.files.getlist("new_images")
-    delete_keys = request.form.getlist("delete_keys[]")
+        new_image_order = request.form.getlist("image_order[]")
+        delete_document_types = set(request.form.getlist("delete_document_types[]"))
 
-    new_image_order = request.form.getlist("image_order[]")
+        new_thumbnail = request.files.get("new_thumbnail")
+        bill_of_sale_document = request.files.get("billOfSaleDocument")
+        title_document = request.files.get("titleDocument")
+        bill_of_lading_document = request.files.get("billOfLadingDocument")
+        swb_release_document = request.files.get("swbReleaseDocument")
 
-    new_thumbnail = request.files.get("new_thumbnail")
+        allowed = {
+            "lot_number": empty_to_none,
+            "auction_name": empty_to_none,
+            "location": empty_to_none,
+            "shipping_status": normalize_shipping_status,
+            "price_shipping": parse_optional_float,
+            "price_delivery": parse_optional_float,
+            "container_number": empty_to_none,
+            "port_of_origin": empty_to_none,
+            "port_of_destination": empty_to_none,
+            "destination": empty_to_none,
+            "etd": parse_optional_date,
+            "eta": parse_optional_date,
+            "delivery_address": empty_to_none,
+            "receiver_id": empty_to_none,
+            "vin": normalize_vin,
+            "model_year": empty_to_none,
+            "make": empty_to_none,
+            "powertrain": empty_to_none,
+            "model": empty_to_none,
+            "color": empty_to_none,
+        }
 
-    allowed = {
-        "vehicle_name": str,
-        "lot_number": str,
-        "auction_name": str,
-        "location": str,
-        "shipping_status": str,
-        "delivery_status": str,
-        "price_shipping": float,
-        "price_delivery": float,
-        "container_number": str,
-        "port_of_origin": str,
-        "port_of_destination": str,
-        "delivery_address": str,
-        "receiver_id": str,
-        "vin": str,
-        "powertrain": str,
-        "model": str,
-        "color": str,
-    }
+        if "modelYear" in payload and "model_year" not in payload:
+            payload["model_year"] = payload["modelYear"]
 
-    # update backend
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    for field, cast in allowed.items():
-        if field in payload:
-            setattr(vehicle, field, cast(payload[field]))
+        vehicle = Vehicle.query.get_or_404(vehicle_id)
+        for field, cast in allowed.items():
+            if field in payload:
+                setattr(vehicle, field, cast(payload[field]))
 
-    if vehicle.image_order != new_image_order:
-        setattr(vehicle, "image_order", new_image_order)
-
-    db.session.commit()
-
-    # delete using url or key (if provided)
-    for url_or_key in delete_keys:
-        if url_or_key.startswith("http"):
-            path    = urlparse(url_or_key).path.lstrip("/")
-            obj_key = unquote(path)
-        else:
-            safe_name = unquote(url_or_key)
-            obj_key   = f"{vehicle.cognito_sub}/{vehicle_id}/{safe_name}"
-
-        s3_client.delete_object(
-            Bucket=Config.S3_BUCKET,
-            Key=obj_key,
+        delete_vehicle_images_for_keys(
+            vehicle, delete_keys, s3_transaction=s3_transaction
         )
+        db.session.flush()
 
-    # upload new Image files
-    for f in new_files:
-        s3_client.upload_fileobj(
-            f,
-            Config.S3_BUCKET,
-            f"{vehicle.cognito_sub}/{vehicle_id}/{f.filename}",
-            ExtraArgs={"ContentType": f.mimetype},
-        )
-
-    if new_thumbnail:
-
-        folder_prefix = f"{vehicle.cognito_sub}/{vehicle_id}"
-
-        resp = s3_client.list_objects_v2(
-            Bucket=Config.S3_BUCKET,
-            Prefix=f"{folder_prefix}thumbnail",
-        )
-
-        objects = [
-            {"Key": obj["Key"]}
-            for obj in resp.get("Contents", [])
-            if not obj["Key"].endswith("/")
-        ]
-
-        if objects:
-            s3_client.delete_objects(
-                Bucket=Config.S3_BUCKET,
-                Delete={"Objects": objects},
+        next_sort_order = len(vehicle.images)
+        for index, image_file in enumerate(new_files):
+            create_vehicle_image(
+                vehicle, image_file, next_sort_order + index,
+                s3_transaction=s3_transaction,
             )
 
-        create_thumbnail(new_thumbnail, folder_prefix, False)
-        create_thumbnail(new_thumbnail, folder_prefix, True)
+        if new_image_order:
+            db.session.flush()
+            db.session.expire(vehicle, ["images"])
+            set_vehicle_image_order(vehicle, new_image_order)
+            vehicle.image_order = new_image_order
 
-    # rebuild vehicle
-    v_dict = vehicle.to_dict()
-    v_dict["vehicleImages"] = []
-    v_dict["vehicleVideos"] = []
-    v_dict["vehicleThumbnail"] = ""
+        if new_thumbnail:
+            replace_vehicle_main_thumbnails(
+                vehicle, new_thumbnail, s3_transaction=s3_transaction
+            )
 
-    if on_singular_vehicle_page:
-        images, videos = get_all_vehicle_images(vehicle.cognito_sub, vehicle_id)
-        v_dict["vehicleImages"] = images
-        v_dict["vehicleVideos"] = videos
+        if delete_document_types:
+            delete_vehicle_documents(
+                vehicle, delete_document_types, s3_transaction=s3_transaction
+            )
 
-        v_dict["vehicleThumbnail"] = get_vehicle_thumbnail_filename(vehicle.cognito_sub, vehicle_id)
-    else:
+        document_uploads = [
+            (bill_of_sale_document, "bill_of_sale_document"),
+            (title_document, "title_document"),
+            (bill_of_lading_document, "bill_of_lading_document"),
+            (swb_release_document, "swb_release_document"),
+        ]
+        for document_file, document_type in document_uploads:
+            if document_file:
+                create_vehicle_document_media(
+                    vehicle, document_file, document_type,
+                    s3_transaction=s3_transaction,
+                )
 
-        v_dict["vehicleThumbnail"], v_dict["vehicleThumbnailMobile"] = get_vehicle_thumbnails(vehicle.cognito_sub, vehicle_id)
+        db.session.commit()
+        transaction_committed = True
+        cleanup_s3_keys(
+            s3_transaction.superseded_keys,
+            "superseded vehicle media objects",
+        )
 
-    return success_response({"vehicle": v_dict})
+        vehicle = Vehicle.query.get_or_404(vehicle_id)
+        v_dict = build_vehicle_response(
+            vehicle,
+            include_images=bool(on_singular_vehicle_page),
+            include_videos=bool(on_singular_vehicle_page),
+        )
+        return success_response({"vehicle": v_dict})
+
+    except (TypeError, ValueError) as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=str(e), code=400)
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=str(e), code=500)
 
 @admin_bp.post("/vehicles/decode-vin/<string:vin>")
+@cognito_auth_required(["Admin"])
 def decode_vin(vin: str):
+    try:
+        vin = normalize_vin(vin)
+    except (TypeError, ValueError) as e:
+        return error_response(message=str(e), code=400)
 
     raw = vpic.decode_vin(vin, flatten=True)   # returns a dict
     fuel_primary   = raw.get("FuelTypePrimary", "").lower()
@@ -302,30 +436,39 @@ def decode_vin(vin: str):
 
 @admin_bp.route("/vehicles/<string:sub>/create-vehicle", methods=["POST"])
 @cognito_auth_required(["Admin"])
+@time_api_call("create_vehicle")
 def admin_create_vehicle(sub):
+    s3_transaction = S3UploadTransaction()
+    transaction_committed = False
     try:
 
-        lot_number = request.form.get("lotNumber") or ""
-        auction_name = request.form.get("auctionName") or ""
-        location = request.form.get("location") or ""
-        shipping_status = request.form.get("shippingStatus") or ""
-        vehicle_name = request.form.get("vehicleName") or "Vehicle"
+        lot_number = empty_to_none(request.form.get("lotNumber"))
+        auction_name = empty_to_none(request.form.get("auctionName"))
+        location = empty_to_none(request.form.get("location"))
+        shipping_status = normalize_shipping_status(request.form.get("shippingStatus"))
 
-        container_number = request.form.get("containerNumber") or ""
-        delivery_address = request.form.get("deliveryAddress") or ""
-        port_of_destination = request.form.get("portOfDestination") or ""
-        port_of_origin = request.form.get("portOfOrigin") or ""
-        receiver_id = request.form.get("receiverId") or ""
+        container_number = empty_to_none(request.form.get("containerNumber"))
+        delivery_address = empty_to_none(request.form.get("deliveryAddress"))
+        port_of_destination = empty_to_none(request.form.get("portOfDestination"))
+        port_of_origin = empty_to_none(request.form.get("portOfOrigin"))
+        destination = empty_to_none(request.form.get("destination"))
+        etd = parse_optional_date(request.form.get("etd"))
+        eta = parse_optional_date(request.form.get("eta"))
+        receiver_id = empty_to_none(request.form.get("receiverId"))
 
-        vin = request.form.get("vin") or ""
-        powertrain = request.form.get("powertrain") or ""
-        model = request.form.get("model") or ""
-        color = request.form.get("color") or ""
+        vin = normalize_vin(request.form.get("vin"))
+        model_year = empty_to_none(request.form.get("modelYear") or request.form.get("model_year"))
+        make = empty_to_none(request.form.get("make"))
+        powertrain = empty_to_none(request.form.get("powertrain"))
+        model = empty_to_none(request.form.get("model"))
+        color = empty_to_none(request.form.get("color"))
 
-        price_delivery = float(request.form.get("priceDelivery") or 0)
-        price_shipping = float(request.form.get("priceShipping") or 0)
+        price_delivery = parse_optional_float(request.form.get("priceDelivery"))
+        price_shipping = parse_optional_float(request.form.get("priceShipping"))
 
         user = User.query.filter_by(cognito_sub=sub).first()
+        if user is None:
+            return error_response(message="User not found", code=404)
         user_email = user.email
 
         images = request.files.getlist("images")
@@ -337,14 +480,10 @@ def admin_create_vehicle(sub):
         bill_of_lading_document = request.files.get("billOfLadingDocument")
         swb_release_document = request.files.get("swbReleaseDocument")
 
-        if not all([vehicle_name, images]):
-            return error_response(message="MissingFieldError", code=400)
-
-        try:
-            price_delivery = float(price_delivery) if price_delivery else None
-            price_shipping = float(price_shipping) if price_shipping else None
-        except ValueError:
-            return error_response(message="Invalid price format", code=400)
+        image_order = [
+            safe_upload_filename(image.filename)
+            for image in images
+        ]
 
         new_vehicle = Vehicle(
             cognito_sub=sub,
@@ -354,101 +493,100 @@ def admin_create_vehicle(sub):
             shipping_status=shipping_status,
             price_delivery=price_delivery,
             price_shipping=price_shipping,
-            vehicle_name=vehicle_name,
             user_email=user_email,
 
             container_number=container_number,
             delivery_address=delivery_address,
             port_of_destination=port_of_destination,
             port_of_origin=port_of_origin,
+            destination=destination,
+            etd=etd,
+            eta=eta,
             receiver_id=receiver_id,
 
             vin=vin,
+            model_year=model_year,
+            make=make,
             powertrain=powertrain,
             model=model,
             color=color,
 
-            image_order=[secure_filename(image.filename.split('/')[-1]) for image in images]
+            image_order=image_order
         )
 
         db.session.add(new_vehicle)
-        db.session.commit()
+        db.session.flush()
 
-        # add images here
+        for index, image in enumerate(images):
+            create_vehicle_image(
+                new_vehicle, image, index, s3_transaction=s3_transaction
+            )
 
-        folder_prefix = f"{sub}/{new_vehicle.id}"
+        thumbnail_source = thumbnail or (images[0] if images else None)
+        if thumbnail_source:
+            replace_vehicle_main_thumbnails(
+                new_vehicle,
+                thumbnail_source,
+                s3_transaction=s3_transaction,
+            )
 
-        if not thumbnail:
-            thumbnail = images[0]
-
-        # Mk desktop thumbnail
-        create_thumbnail(thumbnail, folder_prefix, False)
-
-        # Mk mobile thumbnail
-        create_thumbnail(thumbnail, folder_prefix, True)
-
-        # upload all images
-        for image in images:
-            add_file(image.filename, f"{folder_prefix}/{secure_filename(image.filename.split('/')[-1])}", image)
-
-        #upload all videos
         for video in videos:
-            add_file(video.filename, f"{folder_prefix}/videos/{secure_filename(video.filename.split('/')[-1])}", video)
+            create_vehicle_video_media(
+                new_vehicle, video, s3_transaction=s3_transaction
+            )
 
-        # upload all documents
-        if (bill_of_sale_document):
-            add_file(bill_of_sale_document.filename, f"{folder_prefix}/documents/{secure_filename(vehicle_name)}_bill_of_sale_document", bill_of_sale_document)
-        if (bill_of_lading_document):
-            add_file(bill_of_lading_document.filename, f"{folder_prefix}/documents/{secure_filename(vehicle_name)}_bill_of_lading_document", bill_of_lading_document)
-        if (title_document):
-            add_file(title_document.filename, f"{folder_prefix}/documents/{secure_filename(vehicle_name)}_title_document", title_document)
-        if (swb_release_document):
-            add_file(swb_release_document.filename, f"{folder_prefix}/documents/{secure_filename(vehicle_name)}_swb_release_document", swb_release_document)
+        if bill_of_sale_document:
+            create_vehicle_document_media(
+                new_vehicle, bill_of_sale_document, "bill_of_sale_document",
+                replace=False, s3_transaction=s3_transaction,
+            )
+        if bill_of_lading_document:
+            create_vehicle_document_media(
+                new_vehicle, bill_of_lading_document, "bill_of_lading_document",
+                replace=False, s3_transaction=s3_transaction,
+            )
+        if title_document:
+            create_vehicle_document_media(
+                new_vehicle, title_document, "title_document",
+                replace=False, s3_transaction=s3_transaction,
+            )
+        if swb_release_document:
+            create_vehicle_document_media(
+                new_vehicle, swb_release_document, "swb_release_document",
+                replace=False, s3_transaction=s3_transaction,
+            )
+
+        db.session.commit()
+        transaction_committed = True
+        cleanup_s3_keys(
+            s3_transaction.superseded_keys,
+            "superseded vehicle media objects",
+        )
 
         return success_response()
 
+    except (TypeError, ValueError) as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=str(e), code=400)
     except Exception as e:
         print(str(e))
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
         return error_response(message=str(e), code=500)
 
 
 @admin_bp.route("/vehicles/<string:sub>/delete-vehicle/<int:vehicle_id>", methods=["POST"])
 @cognito_auth_required(["Admin"])
 def admin_delete_vehicle(sub, vehicle_id):
-
-    prefix = f"{sub}/{vehicle_id}/"
-    continuation_token = None
-    # delete S3
-    while True:
-        list_kwargs = {
-            "Bucket": Config.S3_BUCKET,
-            "Prefix": prefix,
-            "MaxKeys": 1000,
-        }
-        if continuation_token:
-            list_kwargs["ContinuationToken"] = continuation_token
-
-        resp = s3_client.list_objects_v2(**list_kwargs)
-        contents = resp.get("Contents", [])
-
-        if not contents:
-            break
-
-        delete_keys = [{"Key": obj["Key"]} for obj in contents]
-        try:
-            s3_client.delete_objects(
-                Bucket=Config.S3_BUCKET,
-                Delete={"Objects": delete_keys, "Quiet": True},
-            )
-        except Exception as e:
-            return error_response(message="Failed to delete S3 objects", code=500)
-
-        if resp.get("IsTruncated"):
-            continuation_token = resp["NextContinuationToken"]
-        else:
-            break
-
-    # delete vehicle item from db
     try:
         vehicle = (
             Vehicle.query
@@ -459,11 +597,12 @@ def admin_delete_vehicle(sub, vehicle_id):
         if vehicle is None:
             return error_response(message="Vehicle not found in database", code=404)
 
+        delete_s3_keys(vehicle_s3_keys(vehicle))
         db.session.delete(vehicle)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return error_response(message="Failed to delete vehicle from database", code=500)
+        return error_response(message="Failed to delete vehicle", code=500)
 
     return success_response()
 

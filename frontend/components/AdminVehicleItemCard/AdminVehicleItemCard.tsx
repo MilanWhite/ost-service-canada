@@ -1,9 +1,9 @@
-import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { CheckCircleIcon, ClockIcon } from "@heroicons/react/20/solid";
 
 import { useEditVehicle } from "../../hooks/useEditVehicle";
-import { Vehicle, translateStatus } from "../../hooks/interfaces";
+import { translateStatus, Vehicle } from "../../hooks/interfaces";
 import { URLS } from "../../src/config/navigation";
 import ErrorBanner from "../ErrorBanner";
 import VehicleThumbnail from "../VehicleThumbnail";
@@ -12,8 +12,18 @@ interface Props {
     vehicle: Vehicle;
 }
 
+type AdminCardEditableField =
+    | "vin"
+    | "model_year"
+    | "make"
+    | "model"
+    | "container_number"
+    | "destination"
+    | "etd"
+    | "eta";
+
 const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     const {
         vehicle,
@@ -30,6 +40,69 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
         await saveChanges();
     };
 
+    const editableVehicleFields: {
+        label: string;
+        field: AdminCardEditableField;
+        type?: string;
+    }[] = [
+        { label: t("AuthenticatedView.vin"), field: "vin" },
+        { label: t("AuthenticatedView.year"), field: "model_year" },
+        { label: t("AuthenticatedView.make"), field: "make" },
+        { label: t("AuthenticatedView.model"), field: "model" },
+    ];
+
+    const editableLogisticsFields: {
+        label: string;
+        field: AdminCardEditableField;
+        type?: string;
+    }[] = [
+        {
+            label: t("AuthenticatedView.container_number"),
+            field: "container_number",
+        },
+        { label: t("AuthenticatedView.destination"), field: "destination" },
+        { label: "ETD", field: "etd", type: "date" },
+        { label: "ETA", field: "eta", type: "date" },
+    ];
+
+    const documents = [
+        {
+            label: t("AuthenticatedView.bill_of_sale"),
+            href: vehicle.vehicleBillOfSaleDocument,
+        },
+        {
+            label: t("AuthenticatedView.bill_of_lading"),
+            href: vehicle.vehicleBillOfLadingDocument,
+        },
+        {
+            label: t("AuthenticatedView.copy_of_title"),
+            href: vehicle.vehicleTitleDocument,
+        },
+        {
+            label: t("AuthenticatedView.admin_card_sea_waybill_release_short"),
+            href: vehicle.vehicleSWBReleaseDocument,
+        },
+    ];
+
+    const statusBadgeClass =
+        vehicle.shipping_status === "Delivered"
+            ? "border-status-delivered-border bg-status-delivered-bg text-status-delivered-text"
+            : "border-status-not-delivered-border bg-status-not-delivered-bg text-status-not-delivered-text";
+    const cardStatusClass =
+        vehicle.shipping_status === "Delivered"
+            ? "bg-status-delivered-card"
+            : "bg-status-not-delivered-card";
+    const StatusIcon =
+        vehicle.shipping_status === "Delivered" ? CheckCircleIcon : ClockIcon;
+    const dateCreated = new Intl.DateTimeFormat(i18n.language, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(new Date(vehicle.created_at));
+    const titleWithoutVin = vehicle.vehicle_name
+        .replace(new RegExp(`\\s*${vehicle.vin}\\s*$`), "")
+        .trim();
+
     return (
         <section aria-labelledby="vehicle-heading" className="mt-6">
             {editVehicleError && (
@@ -42,282 +115,249 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
 
             <div
                 key={initial.id}
-                className="sm:relative border-t border-b border-gray-200 bg-white shadow-xs sm:rounded-lg sm:border"
+                className={`overflow-hidden rounded-lg border border-gray-200 shadow-xs sm:relative ${cardStatusClass}`}
             >
-                <div className="px-4 py-6 sm:px-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:p-8">
+                <div className="hidden px-4 pt-4 text-sm text-gray-500 sm:absolute sm:top-4 sm:right-6 sm:block sm:px-0 sm:pt-0 sm:text-right">
+                    <p className="font-medium text-gray-900">
+                        {t("AuthenticatedView.date_created")}
+                    </p>
+                    <time dateTime={vehicle.created_at}>{dateCreated}</time>
+                </div>
+                <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 lg:grid lg:grid-cols-12 lg:gap-x-4 lg:p-5">
                     {/* LEFT: image + basic info */}
-                    <div className="sm:flex lg:col-span-5">
+                    <div className="sm:flex lg:col-span-4">
                         <VehicleThumbnail
                             mobileSrc={vehicle.vehicleThumbnailMobile ?? ""}
                             desktopSrc={vehicle.vehicleThumbnail ?? ""}
                             alt={vehicle.vehicle_name}
-                            className="aspect-square w-full shrink-0 rounded-lg object-cover sm:size-40"
+                            className="aspect-square w-full shrink-0 rounded-lg object-cover sm:size-32"
+                            hideMobileFallback
                         />
 
-                        <div className="mt-6 sm:mt-0 sm:ml-6 flex-1">
+                        <div className="mt-3 sm:mt-0 sm:ml-5 flex-1">
                             {isEditing ? (
                                 <>
                                     <label className="block text-sm font-medium text-gray-700">
                                         {t("AuthenticatedView.vehicle_name")}
                                     </label>
-                                    <input
-                                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                        value={vehicle.vehicle_name}
-                                        onChange={handleChange("vehicle_name")}
-                                    />
-
-                                    <label className="block text-sm font-medium text-gray-700 mt-4">
-                                        {t("AuthenticatedView.price_delivery")}
+                                    <p className="mt-1 text-gray-900">
+                                        {vehicle.vehicle_name}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-600 sm:hidden">
+                                        <span className="font-medium text-gray-900">
+                                            {t("AuthenticatedView.date_created")}:
+                                        </span>{" "}
+                                        <time dateTime={vehicle.created_at}>
+                                            {dateCreated}
+                                        </time>
+                                    </p>
+                                    <label className="mt-4 block text-sm font-medium text-gray-700">
+                                        {t("AuthenticatedView.shipping_status")}
                                     </label>
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                            $
-                                        </div>
-                                        <input
-                                            type="number"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            value={vehicle.price_delivery}
-                                            onChange={handleChange(
-                                                "price_delivery"
+                                    <select
+                                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
+                                        value={vehicle.shipping_status}
+                                        onChange={handleChange(
+                                            "shipping_status"
+                                        )}
+                                    >
+                                        <option value="Not delivered">
+                                            {t(
+                                                "AuthenticatedView.not_delivered"
                                             )}
-                                        />
-                                        <div
-                                            id="price-currency"
-                                            className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6"
-                                        >
-                                            USD
-                                        </div>
-                                    </div>
-
-                                    <label className="block text-sm font-medium text-gray-700 mt-4">
-                                        {t("AuthenticatedView.price_shipping")}
-                                    </label>
-                                    <div className="flex items-center rounded-md bg-white px-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
-                                        <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                                            $
-                                        </div>
-                                        <input
-                                            type="number"
-                                            className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                                            value={vehicle.price_shipping}
-                                            onChange={handleChange(
-                                                "price_shipping"
-                                            )}
-                                        />
-                                        <div
-                                            id="price-currency"
-                                            className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6"
-                                        >
-                                            USD
-                                        </div>
-                                    </div>
+                                        </option>
+                                        <option value="Delivered">
+                                            {t("AuthenticatedView.delivered")}
+                                        </option>
+                                    </select>
                                 </>
                             ) : (
                                 <>
                                     <h3 className="text-base font-medium text-gray-900">
-                                        {vehicle.vehicle_name}
+                                        <span className="lg:hidden">
+                                            {vehicle.vehicle_name}
+                                        </span>
+                                        <span className="hidden lg:block">
+                                            {titleWithoutVin || vehicle.vehicle_name}
+                                            <span className="block text-gray-600">
+                                                {vehicle.vin}
+                                            </span>
+                                        </span>
                                     </h3>
-                                    <p className="mt-2 text-sm font-small text-gray-900">
-                                        {t("AuthenticatedView.price_delivery")}:
-                                        ${vehicle.price_delivery}
+                                    <p className="mt-1 text-sm text-gray-600 sm:hidden">
+                                        <span className="font-medium text-gray-900">
+                                            {t("AuthenticatedView.date_created")}:
+                                        </span>{" "}
+                                        <time dateTime={vehicle.created_at}>
+                                            {dateCreated}
+                                        </time>
                                     </p>
-                                    <p className="mt-2 text-sm font-small text-gray-900">
-                                        {t("AuthenticatedView.price_shipping")}:
-                                        ${vehicle.price_shipping}
-                                    </p>
+                                    <span
+                                        className={`mt-3 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold shadow-xs ${statusBadgeClass}`}
+                                    >
+                                        <StatusIcon className="size-5" />
+                                        {t(
+                                            translateStatus(
+                                                vehicle.shipping_status
+                                            ) as string
+                                        )}
+                                    </span>
                                 </>
                             )}
                         </div>
                     </div>
 
                     {/* RIGHT: details + actions */}
-                    <div className="mt-6 lg:col-span-7 lg:mt-0">
+                    <div className="mt-5 lg:col-span-8 lg:mt-0 lg:pr-28 xl:pr-36">
                         <dl className="grid grid-cols-1 gap-x-6 text-sm">
-                            {/* Location / Auction / Lot # */}
-                            <div className="space-y-4 lg:flex space-x-10">
-                                <div className="lg:w-50">
-                                    <dt className="font-medium text-gray-900 ">
-                                        {t(
-                                            "AuthenticatedView.location_auction_lot_number"
-                                        )}
+                            <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:space-y-0 xl:gap-x-12">
+                                <div className="min-w-0">
+                                    <dt className="font-medium leading-snug text-gray-900">
+                                        {t("AuthenticatedView.vehicle_info")}
                                     </dt>
                                     <dd className="mt-3 space-y-1 text-gray-500">
                                         {isEditing ? (
                                             <>
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={vehicle.location}
-                                                    onChange={handleChange(
-                                                        "location"
-                                                    )}
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={vehicle.auction_name}
-                                                    onChange={handleChange(
-                                                        "auction_name"
-                                                    )}
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={vehicle.lot_number}
-                                                    onChange={handleChange(
-                                                        "lot_number"
-                                                    )}
-                                                />
+                                                {editableVehicleFields.map(
+                                                    (field) => (
+                                                        <label
+                                                            key={field.field}
+                                                            className="block"
+                                                        >
+                                                            <span className="font-medium text-gray-700">
+                                                                {field.label}
+                                                            </span>
+                                                            <input
+                                                                type={
+                                                                    field.type ??
+                                                                    "text"
+                                                                }
+                                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
+                                                                value={
+                                                                    vehicle[
+                                                                        field
+                                                                            .field
+                                                                    ] ?? ""
+                                                                }
+                                                                onChange={handleChange(
+                                                                    field.field
+                                                                )}
+                                                            />
+                                                        </label>
+                                                    )
+                                                )}
                                             </>
                                         ) : (
                                             <>
-                                                <span className="block">
-                                                    {vehicle.location}
-                                                </span>
-                                                <span className="block">
-                                                    {vehicle.auction_name}
-                                                </span>
-                                                <span className="block">
-                                                    {vehicle.lot_number}
-                                                </span>
+                                                {editableVehicleFields.map(
+                                                    (field) => (
+                                                        <span
+                                                            key={field.field}
+                                                            className="block"
+                                                        >
+                                                            <span className="font-medium text-gray-700">
+                                                                {field.label}:{" "}
+                                                            </span>
+                                                            {vehicle[
+                                                                field.field
+                                                            ] ?? ""}
+                                                        </span>
+                                                    )
+                                                )}
                                             </>
                                         )}
                                     </dd>
                                 </div>
-                                {/* Logistics / Dispatch Info */}
-                                <div className="lg:w-70 block lg:hidden xl:block">
-                                    <dt className="font-medium text-gray-900">
+                                <div className="block min-w-0 lg:hidden xl:block">
+                                    <dt className="font-medium leading-snug text-gray-900">
                                         {t(
-                                            "AuthenticatedView.cont_po_pd_deliv_add_rec_id"
+                                            "AuthenticatedView.logistics_shipping_details"
                                         )}
                                     </dt>
                                     <dd className="mt-3 space-y-1 text-gray-500 ">
                                         {isEditing ? (
                                             <>
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={
-                                                        vehicle.container_number
-                                                    }
-                                                    onChange={handleChange(
-                                                        "container_number"
-                                                    )}
-                                                    placeholder="Container Number"
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={
-                                                        vehicle.port_of_origin
-                                                    }
-                                                    onChange={handleChange(
-                                                        "port_of_origin"
-                                                    )}
-                                                    placeholder="Port of Origin"
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={
-                                                        vehicle.port_of_destination
-                                                    }
-                                                    onChange={handleChange(
-                                                        "port_of_destination"
-                                                    )}
-                                                    placeholder="Port of Destination"
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={
-                                                        vehicle.delivery_address
-                                                    }
-                                                    onChange={handleChange(
-                                                        "delivery_address"
-                                                    )}
-                                                    placeholder="Delivery Address"
-                                                />
-                                                <input
-                                                    className="block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                    value={vehicle.receiver_id}
-                                                    onChange={handleChange(
-                                                        "receiver_id"
-                                                    )}
-                                                    placeholder="Receiver ID"
-                                                />
+                                                {editableLogisticsFields.map(
+                                                    (field) => (
+                                                        <label
+                                                            key={field.field}
+                                                            className="block"
+                                                        >
+                                                            <span className="font-medium text-gray-700">
+                                                                {field.label}
+                                                            </span>
+                                                            <input
+                                                                type={
+                                                                    field.type ??
+                                                                    "text"
+                                                                }
+                                                                className="mt-1 block w-full rounded-md bg-white px-2 py-1 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
+                                                                value={
+                                                                    vehicle[
+                                                                        field
+                                                                            .field
+                                                                    ] ?? ""
+                                                                }
+                                                                onChange={handleChange(
+                                                                    field.field
+                                                                )}
+                                                            />
+                                                        </label>
+                                                    )
+                                                )}
                                             </>
                                         ) : (
                                             <>
-                                                <span className="block">
-                                                    {vehicle.container_number}
-                                                </span>
-                                                <span className="block">
-                                                    {vehicle.port_of_origin}
-                                                </span>
-                                                <span className="block">
-                                                    {
-                                                        vehicle.port_of_destination
-                                                    }
-                                                </span>
-                                                <span className="block">
-                                                    {vehicle.delivery_address}
-                                                </span>
-                                                <span className="block">
-                                                    {vehicle.receiver_id}
-                                                </span>
+                                                {editableLogisticsFields.map(
+                                                    (field) => (
+                                                        <span
+                                                            key={field.field}
+                                                            className="block"
+                                                        >
+                                                            <span className="font-medium text-gray-700">
+                                                                {field.label}:{" "}
+                                                            </span>
+                                                            {vehicle[
+                                                                field.field
+                                                            ] ?? ""}
+                                                        </span>
+                                                    )
+                                                )}
                                             </>
                                         )}
                                     </dd>
                                 </div>
-
-                                {/* Status */}
-                                <div className="lg:w-50">
-                                    <dt className="font-medium text-gray-900">
-                                        {t("AuthenticatedView.shipping_status")}
+                                <div className="min-w-0">
+                                    <dt className="font-medium leading-snug text-gray-900">
+                                        {t("AuthenticatedView.documents")}
                                     </dt>
-                                    <dd className="mt-3 space-y-2 text-gray-500">
-                                        {isEditing ? (
-                                            <>
-                                                <div className="mt-2 grid grid-cols-1">
-                                                    <select
-                                                        className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                                        value={
-                                                            vehicle.shipping_status
-                                                        }
-                                                        onChange={handleChange(
-                                                            "shipping_status"
-                                                        )}
+                                    <dd className="mt-3 space-y-1 text-gray-500">
+                                        {documents.map((document) => (
+                                            <span
+                                                key={document.label}
+                                                className="block"
+                                            >
+                                                {document.href ? (
+                                                    <a
+                                                        href={document.href}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        className="font-medium text-primary hover:text-primary-hover"
                                                     >
-                                                        <option value="Auction">
-                                                            {t(
-                                                                "AuthenticatedView.auction"
-                                                            )}
-                                                        </option>
-                                                        <option value="In transit">
-                                                            {t(
-                                                                "AuthenticatedView.in_transit"
-                                                            )}
-                                                        </option>
-                                                        <option value="Out for delivery">
-                                                            {t(
-                                                                "AuthenticatedView.out_for_delivery"
-                                                            )}
-                                                        </option>
-                                                        <option value="Delivered">
-                                                            {t(
-                                                                "AuthenticatedView.delivered"
-                                                            )}
-                                                        </option>
-                                                    </select>
-                                                    <ChevronDownIcon
-                                                        aria-hidden="true"
-                                                        className="pointer-events-none col-start-1 row-start-1 mr-2 h-5 w-5 self-center justify-self-end text-gray-500 sm:h-4 sm:w-4"
-                                                    />
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <p>
-                                                {t(
-                                                    translateStatus(
-                                                        vehicle.shipping_status
-                                                    ) as string
+                                                        {document.label}
+                                                    </a>
+                                                ) : (
+                                                    <>
+                                                        <span className="font-medium text-gray-700">
+                                                            {document.label}:{" "}
+                                                        </span>
+                                                        <span className="font-medium text-red-600">
+                                                            {t("AuthenticatedView.none")}
+                                                        </span>
+                                                    </>
                                                 )}
-                                            </p>
-                                        )}
+                                            </span>
+                                        ))}
                                     </dd>
                                 </div>
                             </div>
@@ -325,14 +365,14 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
                     </div>
                 </div>
                 {/* Action Btns */}
-                <div className="sm:absolute right-8 bottom-8">
-                    <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <div className="px-4 pb-4 sm:absolute sm:right-5 sm:bottom-5 sm:px-0 sm:pb-0">
+                    <div className="mt-2 flex flex-col gap-3 sm:mt-0 sm:flex-row-reverse">
                         {isEditing ? (
                             <>
                                 <button
                                     onClick={handleSave}
                                     disabled={isEditVehicleLoading}
-                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-75 sm:ml-3 sm:w-auto"
+                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-75 sm:w-auto"
                                 >
                                     {isEditVehicleLoading
                                         ? t("AuthenticatedView.saving")
@@ -341,7 +381,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
                                 <button
                                     onClick={cancelEditing}
                                     disabled={isEditVehicleLoading}
-                                    className="cursor-pointer mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-75 sm:mt-0 sm:w-auto"
+                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-75 sm:w-auto"
                                 >
                                     {t("AuthenticatedView.cancel")}
                                 </button>
@@ -355,7 +395,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
                                     )}
                                 >
                                     <button
-                                        className="cursor-pointer inline-flex w-full cursor-pointer justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover sm:ml-3 sm:w-auto"
+                                        className="cursor-pointer inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover sm:w-auto"
                                         type="button"
                                     >
                                         {t("AuthenticatedView.view")}
@@ -363,7 +403,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
                                 </Link>
                                 <button
                                     onClick={startEditing}
-                                    className="cursor-pointer mt-3 inline-flex w-full cursor-pointer justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                    className="cursor-pointer inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:w-auto"
                                     type="button"
                                 >
                                     {t("AuthenticatedView.edit")}

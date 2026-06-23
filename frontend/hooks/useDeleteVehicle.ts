@@ -22,7 +22,7 @@ export function useDeleteVehicle(): UseDeleteVehicleResult {
                 `/api/admin/vehicles/${sub}/delete-vehicle/${vehicleId}`
             );
             return false; // this represents an error response, ie error = false
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return false; // no error on canceled error
 
             setDeleteVehicleError("AuthenticatedView.Errors.failed_to_delete_vehicle");

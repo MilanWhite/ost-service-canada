@@ -21,7 +21,7 @@ export function useGetVehicle(
         try {
             const resp = await apiClient.get(`/api/main/${userSub}/vehicles/${vehicleId}`)
             setVehicle(resp.data.message.vehicle)
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setVehicleError("AuthenticatedView.Errors.failed_to_load_vehicle")

@@ -17,7 +17,7 @@ export function useGetUser(sub?: string) {
         try {
             const response = await apiClient.get(`/api/main/${sub}/get-user`);
             setUser(response.data.message.user);
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setUserError("AuthenticatedView.Errors.failed_to_fetch_user");

@@ -15,7 +15,7 @@ export function useAdminDashboard() {
         try {
             const response = await apiClient.get("/api/admin/dashboard");
             setAdminDashboardData(response.data.message);
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setAdminDashboardError("AuthenticatedView.Errors.failed_to_load_dashboard");

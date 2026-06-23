@@ -1,67 +1,94 @@
 from flask import Blueprint, request
-from sqlalchemy import or_
+from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
-from app.utils import success_response, error_response, get_vehicle_thumbnail_filename, check_sub, get_vehicle_thumbnails, get_all_vehicle_images, get_vehicle_document
-from app.decorators import cognito_auth_required
+from app.media import (
+    attach_vehicle_media,
+    build_vehicle_response,
+    vehicle_media_rows_by_vehicle_id,
+)
+from app.utils import success_response, error_response, check_sub
+from app.decorators import cognito_auth_required, time_api_call
+from app.cognito import cognito_client
+from app.config import Config
 
 main_bp = Blueprint('main', __name__)
 
 # requires pagination
 @main_bp.route("/<string:sub>/vehicles", methods=["GET"])
+@time_api_call("vehicle_list")
 @cognito_auth_required(["Admin", "RegularUser"])
 def main_get_user_vehicles(sub):
-
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 10, type=int)
 
         vehicle_search = request.args.get("vehicle_search", "", type=str)
         vehicle_filter_by = request.args.get("vehicle_filter_by", None, type=str)
+        vehicle_status_filter = request.args.get("vehicle_status_filter", "both", type=str)
 
-        vehicles = Vehicle.query.filter_by(cognito_sub=sub).order_by(Vehicle.created_at.desc())
-        # filter vehicels by search
+        vehicles = Vehicle.query.filter_by(cognito_sub=sub).order_by(
+            case((Vehicle.shipping_status == "Not delivered", 0), else_=1),
+            Vehicle.created_at.desc(),
+        )
+
+        if vehicle_status_filter in {"Delivered", "Not delivered"}:
+            vehicles = vehicles.filter(Vehicle.shipping_status == vehicle_status_filter)
+
+        # filter vehicles by search
 
         if vehicle_search:
             # whitelist to avoid injection
             allowed = {
-              "lot_number",
-              "auction_name",
-              "location",
-              "shipping_status",
-              "vehicle_name",
-
+              "created_at",
+              "etd",
+              "eta",
+              "vin",
+              "model_year",
+              "make",
+              "model",
               "container_number",
-              "port_of_origin",
-              "port_of_destination",
-              "delivery_address",
-              "receiver_id",
+              "destination",
             }
 
             if vehicle_filter_by in allowed:
                 col = getattr(Vehicle, vehicle_filter_by)
-                vehicles = vehicles.filter(col.ilike(f"%{vehicle_search}%"))
+                vehicles = vehicles.filter(cast(col, String).ilike(f"%{vehicle_search}%"))
             else:
-                # fallback: global search on vehicle_name + auction_name, for example
+                # Default search covers the visible vehicle-list fields.
                 pattern = f"%{vehicle_search}%"
                 vehicles = vehicles.filter(
                     or_(
-                        Vehicle.vehicle_name.ilike(pattern),
-                        Vehicle.auction_name.ilike(pattern),
-                        Vehicle.location.ilike(pattern),
+                        cast(Vehicle.created_at, String).ilike(pattern),
+                        cast(Vehicle.etd, String).ilike(pattern),
+                        cast(Vehicle.eta, String).ilike(pattern),
+                        Vehicle.vin.ilike(pattern),
+                        Vehicle.model_year.ilike(pattern),
+                        Vehicle.make.ilike(pattern),
+                        Vehicle.model.ilike(pattern),
+                        Vehicle.container_number.ilike(pattern),
+                        Vehicle.destination.ilike(pattern),
                     )
                 )
 
         pagination = vehicles.paginate(page=page, per_page=per_page, error_out=False)
-        vehicles_list = [v.to_dict() for v in pagination.items]
-
-        # get all vehicle thumbnails
+        vehicle_rows = pagination.items
+        vehicles_list = [v.to_dict() for v in vehicle_rows]
+        media_by_vehicle_id = vehicle_media_rows_by_vehicle_id(
+            [vehicle.id for vehicle in vehicle_rows]
+        )
 
         for vehicle in vehicles_list:
-            vehicle["vehicleThumbnail"], vehicle["vehicleThumbnailMobile"] = get_vehicle_thumbnails(vehicle["cognito_sub"], vehicle["id"])
+            attach_vehicle_media(
+                vehicle,
+                media_by_vehicle_id.get(vehicle["id"], []),
+                include_videos=False,
+            )
 
         return success_response({
             "vehicles": vehicles_list,
@@ -84,7 +111,9 @@ def main_get_user_vehicles(sub):
 def main_get_user(sub):
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         user = User.query.filter_by(cognito_sub=sub).first()
         if not user:
@@ -97,6 +126,14 @@ def main_get_user(sub):
             "email":         user.email,
             "phone_number":  user.phone_number,
         }
+
+        if "Admin" in request.user["cognito:groups"]:
+            cognito_user = cognito_client.admin_get_user(
+                UserPoolId=Config.USER_POOL_ID,
+                Username=sub,
+            )
+            user_data["cognito_status"] = cognito_user.get("UserStatus")
+            user_data["cognito_enabled"] = cognito_user.get("Enabled", False)
 
         # 3. return
         return success_response({"user": user_data})
@@ -111,7 +148,9 @@ def main_get_user(sub):
 def main_get_specific_vehicle(sub,vehicle_id):
     try:
 
-        check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
 
         vehicle = (
             Vehicle.query
@@ -121,21 +160,11 @@ def main_get_specific_vehicle(sub,vehicle_id):
         if not vehicle:
             return error_response("Vehicle not found", 404)
 
-        vehicle = vehicle.to_dict()
-
-        image_order = vehicle["image_order"] or []
-
-        vehicle["vehicleImages"], vehicle["vehicleVideos"] = get_all_vehicle_images(sub, vehicle_id, image_order=image_order)
-
-        vehicle["vehicleThumbnail"] = get_vehicle_thumbnail_filename(sub, vehicle_id)
-
-        vehicle["vehicleBillOfSaleDocument"] = get_vehicle_document(sub, vehicle_id, "bill_of_sale_document")
-
-        vehicle["vehicleTitleDocument"] = get_vehicle_document(sub, vehicle_id, "title_document")
-
-        vehicle["vehicleBillOfLadingDocument"] = get_vehicle_document(sub, vehicle_id, "bill_of_lading_document")
-
-        vehicle["vehicleSWBReleaseDocument"] = get_vehicle_document(sub, vehicle_id, "swb_release_document")
+        vehicle = build_vehicle_response(
+            vehicle,
+            include_images=True,
+            include_videos=True,
+        )
 
         return success_response({"vehicle": vehicle})
 

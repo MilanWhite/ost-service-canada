@@ -20,7 +20,7 @@ export function useDeleteUser(): UseDeleteUserResult {
         try {
             await apiClient.post(`/api/admin/users/${sub}/delete-user`);
             return false; // no error
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) {
                 return false;
             }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 350" role="img" aria-labelledby="title desc">
+    <title id="title">No image available</title>
+    <desc id="desc">A neutral vehicle image placeholder.</desc>
+    <rect width="350" height="350" fill="#f3f4f6"/>
+    <rect x="0" y="0" width="350" height="350" rx="18" fill="#ffffff" stroke="#d1d5db" stroke-width="4"/>
+    <path d="M88 224h174l-42-58-32 40-24-30-34 48h-42z" fill="#cbd5e1"/>
+    <circle cx="130" cy="126" r="22" fill="#d1d5db"/>
+    <path d="M103 258h144" stroke="#94a3b8" stroke-width="12" stroke-linecap="round"/>
+    <text x="175" y="294" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#64748b">No image</text>
+</svg>

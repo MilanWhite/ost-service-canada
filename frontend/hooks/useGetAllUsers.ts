@@ -15,7 +15,7 @@ export function useGetAllUsers() {
         const response = await apiClient.get("/api/admin/users/get-all-users");
 
         setAllUsers(response.data.message.users);
-    } catch (err: any) {
+    } catch (err: unknown) {
         if (err instanceof CanceledError) return;
 
         setGetAllUsersError("AuthenticatedView.Errors.failed_to_fetch_users");

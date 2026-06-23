@@ -18,7 +18,7 @@ interface Props {
     setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function classNames(...classes: any[]) {
+function classNames(...classes: Array<string | false | null | undefined>) {
     return classes.filter(Boolean).join(" ");
 }
 

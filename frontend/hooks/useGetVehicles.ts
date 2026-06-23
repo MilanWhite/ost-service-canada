@@ -1,23 +1,32 @@
 // hooks/usePaginatedVehicles.ts
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import apiClient from "../services/api-client";
 import { Vehicle, Meta } from "./interfaces";
-import { VehicleFilterField } from "../src/types/types";
+import { VehicleFilterField, VehicleStatusFilter } from "../src/types/types";
 import { CanceledError } from "axios";
 
 export function useGetVehicles(
     userSub: string,
     perPage = 10,
-    { vehicleSearch, vehicleFilterBy }: { vehicleSearch?: string; vehicleFilterBy: VehicleFilterField | null }
+    {
+        vehicleSearch,
+        vehicleFilterBy,
+        vehicleStatusFilter = "both",
+    }: {
+        vehicleSearch?: string;
+        vehicleFilterBy: VehicleFilterField | null;
+        vehicleStatusFilter?: VehicleStatusFilter;
+    }
 ): {
     vehicles: Vehicle[];
     meta: Meta;
     vehiclesLoading: boolean;
     vehiclesError: string | null;
     setPage: (page: number) => void;
-    vehicleRefetch: () => void;
+    vehicleRefetch: () => Promise<void>;
 } {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [page, setPageState] = useState(1);
 
     const [meta, setMeta] = useState<Meta>({
         page: 1,
@@ -39,12 +48,18 @@ export function useGetVehicles(
                 const resp = await apiClient.get<{
                     message: { vehicles: Vehicle[]; meta: Meta };
                 }>(`/api/main/${userSub}/vehicles`, {
-                    params: { page, per_page: perPage, vehicle_search: vehicleSearch, vehicle_filter_by: vehicleFilterBy},
+                    params: {
+                        page,
+                        per_page: perPage,
+                        vehicle_search: vehicleSearch,
+                        vehicle_filter_by: vehicleFilterBy,
+                        vehicle_status_filter: vehicleStatusFilter,
+                    },
                 });
 
                 setVehicles(resp.data.message.vehicles);
                 setMeta(resp.data.message.meta);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (err instanceof CanceledError) return;
 
                 setVehiclesError("AuthenticatedView.Errors.failed_to_load_vehicles");
@@ -52,15 +67,34 @@ export function useGetVehicles(
                 setLoading(false);
             }
         },
-        [userSub, perPage, vehicleSearch, vehicleFilterBy]
+        [userSub, perPage, vehicleSearch, vehicleFilterBy, vehicleStatusFilter]
     );
+    const queryKey = [
+        userSub,
+        perPage,
+        vehicleSearch ?? "",
+        vehicleFilterBy ?? "",
+        vehicleStatusFilter,
+    ].join("|");
+    const previousQueryKey = useRef(queryKey);
 
-    // fetch whenever userSub or meta.page changes
+    // Filter/search/status changes should restart pagination from the first page.
     useEffect(() => {
-        if (userSub) {
-            fetchPage(meta.page);
+        if (!userSub) return;
+
+        const queryChanged = previousQueryKey.current !== queryKey;
+
+        if (queryChanged) {
+            previousQueryKey.current = queryKey;
+
+            if (page !== 1) {
+                setPageState(1);
+                return;
+            }
         }
-    }, [meta.page, fetchPage]);
+
+        fetchPage(page);
+    }, [fetchPage, page, queryKey, userSub]);
 
     return {
         vehicles,
@@ -68,10 +102,7 @@ export function useGetVehicles(
         vehiclesLoading,
         vehiclesError,
         setPage: (page: number) =>
-            setMeta((m) => ({
-                ...m,
-                page: Math.max(1, Math.min(page, m.total_pages)),
-            })),
-        vehicleRefetch: () => fetchPage(meta.page),
+            setPageState(Math.max(1, Math.min(page, meta.total_pages))),
+        vehicleRefetch: () => fetchPage(page),
     };
 }

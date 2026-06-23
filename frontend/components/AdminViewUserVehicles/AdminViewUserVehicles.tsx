@@ -93,7 +93,7 @@ const AdminViewUserVehicles = () => {
                                 {t("AuthenticatedView.back_to")}
                             </p>
                             <p className="text-sm font-semibold text-gray-900">
-                                {t("AuthenticatedView.client_list")}
+                                {t("AuthenticatedView.client_manager")}
                             </p>
                         </div>
                     </div>

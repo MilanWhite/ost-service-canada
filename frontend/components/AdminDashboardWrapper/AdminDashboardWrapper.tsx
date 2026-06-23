@@ -4,6 +4,7 @@ import { UserGroupIcon, HomeIcon } from "@heroicons/react/24/outline";
 
 import GenericDashboardWrapper from "../GenericDashboardWrapper";
 import { URLS } from "../../src/config/navigation";
+import { FEATURE_FLAGS } from "../../src/config/featureFlags";
 
 import { DashboardNavigation } from "../GenericDashboardWrapper/GenericDashboardWrapper";
 
@@ -18,7 +19,10 @@ const baseNavigation: Omit<DashboardNavigation, "current">[] = [
         href: URLS.adminClientManager,
         icon: UserGroupIcon,
     },
-];
+].filter(
+    (item) =>
+        !FEATURE_FLAGS.hideAdminDashboard || item.href !== URLS.adminHome
+);
 
 interface Props {
     children: ReactNode;
@@ -37,7 +41,11 @@ const AdminDashboardWrapper = ({ children }: Props) => {
 
     return (
         <GenericDashboardWrapper
-            homeURL={URLS.adminHome}
+            homeURL={
+                FEATURE_FLAGS.hideAdminDashboard
+                    ? URLS.adminClientManager
+                    : URLS.adminHome
+            }
             dashboardNavigation={dashboardNavigation}
             dashboardUserNavigation={[]}
         >

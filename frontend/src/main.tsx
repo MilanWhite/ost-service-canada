@@ -5,6 +5,7 @@ import {
     RouterProvider,
     useLocation,
     Outlet,
+    Navigate,
 } from "react-router-dom";
 
 import { Authenticator } from "@aws-amplify/ui-react";
@@ -36,6 +37,7 @@ import { AdminRoute } from "../routers/AdminRoute.tsx";
 import "./index.css";
 
 import { URLS } from "./config/navigation.ts";
+import { FEATURE_FLAGS } from "./config/featureFlags.ts";
 
 import { abortAllRequests } from "../services/api-client.ts";
 
@@ -171,7 +173,14 @@ const router = createBrowserRouter([
                 path: URLS.adminHome,
                 element: (
                     <AdminRoute>
-                        <AdminDashboard />
+                        {FEATURE_FLAGS.hideAdminDashboard ? (
+                            <Navigate
+                                to={URLS.adminClientManager}
+                                replace
+                            />
+                        ) : (
+                            <AdminDashboard />
+                        )}
                     </AdminRoute>
                 ),
             },

@@ -32,21 +32,23 @@ const AdminViewUserSingularVehicle = () => {
 
     return (
         <>
-            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:mb-3">
+            <div className="mb-2 flex h-10 items-center gap-x-3 sm:mb-3">
                 <BackButton
                     href={URLS.adminViewClientVehicles(sub)}
                     compact
                 />
-                {(user?.username || vehicle?.user_email) && (
-                    <div className="border-l border-gray-200 pl-3">
-                        <p className="text-xs font-medium text-gray-500">
-                            {t("AuthenticatedView.vehicle_owner")}
-                        </p>
+                <div className="border-l border-gray-200 pl-3">
+                    <p className="text-xs font-medium text-gray-500">
+                        {t("AuthenticatedView.vehicle_owner")}
+                    </p>
+                    {user?.username || vehicle?.user_email ? (
                         <p className="text-sm font-semibold text-gray-900">
                             {user?.username ?? vehicle?.user_email}
                         </p>
-                    </div>
-                )}
+                    ) : (
+                        <div className="mt-1 h-4 w-32 animate-pulse rounded bg-gray-200" />
+                    )}
+                </div>
             </div>
             {vehicleError && (
                 <ErrorBanner>{t(vehicleError as string)}</ErrorBanner>
@@ -57,7 +59,7 @@ const AdminViewUserSingularVehicle = () => {
                     <AdminVehiclePage vehicle={vehicle!} />
                 </>
             ) : (
-                <SingularVehiclePageSkeleton />
+                <SingularVehiclePageSkeleton type="Admin" />
             )}
         </>
     );

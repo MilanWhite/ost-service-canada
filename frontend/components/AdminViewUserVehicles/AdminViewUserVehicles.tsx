@@ -84,19 +84,20 @@ const AdminViewUserVehicles = () => {
             )}
             {userError && <ErrorBanner>{t(userError as string)}</ErrorBanner>}
 
+            <div className="mb-3 flex h-10 items-center gap-x-3">
+                <BackButton href={URLS.adminClientManager} compact />
+                <div className="border-l border-gray-200 pl-3">
+                    <p className="text-xs font-medium text-gray-500">
+                        {t("AuthenticatedView.back_to")}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                        {t("AuthenticatedView.client_manager")}
+                    </p>
+                </div>
+            </div>
+
             {user ? (
                 <>
-                    <div className="mb-3 flex h-10 items-center gap-x-3">
-                        <BackButton href={URLS.adminClientManager} compact />
-                        <div className="border-l border-gray-200 pl-3">
-                            <p className="text-xs font-medium text-gray-500">
-                                {t("AuthenticatedView.back_to")}
-                            </p>
-                            <p className="text-sm font-semibold text-gray-900">
-                                {t("AuthenticatedView.client_manager")}
-                            </p>
-                        </div>
-                    </div>
                     <UserBanner user={user} />
                 </>
             ) : (
@@ -156,9 +157,9 @@ const AdminViewUserVehicles = () => {
                 ))
             ) : (
                 <>
-                    <VehicleCardSkeleton />
-                    <VehicleCardSkeleton appear_size="sm" />
-                    <VehicleCardSkeleton appear_size="lg" />
+                    <VehicleCardSkeleton type="Admin" />
+                    <VehicleCardSkeleton type="Admin" appear_size="sm" />
+                    <VehicleCardSkeleton type="Admin" appear_size="lg" />
                 </>
             )}
 

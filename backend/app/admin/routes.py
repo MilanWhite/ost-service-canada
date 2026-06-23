@@ -218,7 +218,7 @@ def admin_resend_user_invite(sub: str):
 
         cognito_client.admin_create_user(
             UserPoolId=Config.USER_POOL_ID,
-            Username=sub,
+            Username=user.email,
             MessageAction="RESEND",
             DesiredDeliveryMediums=["EMAIL"],
         )

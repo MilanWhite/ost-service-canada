@@ -16,7 +16,7 @@ export function useUserDashboard() {
         try {
             const response = await apiClient.get("/api/main/dashboard");
             setUserDashboardData(response.data.message);
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
             setUserDashboardError("AuthenticatedView.Errors.failed_to_load_dashboard");

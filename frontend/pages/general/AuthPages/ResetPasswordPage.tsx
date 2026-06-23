@@ -107,7 +107,7 @@ export function EmailStep({
             ) {
                 setEmailSent(true);
             }
-        } catch (error: any) {
+        } catch {
             setEmailStepError(
                 "Auth.error_send_code_failed"
             );

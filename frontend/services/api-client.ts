@@ -6,6 +6,10 @@ const baseURL =
 
 const controllers = new Map<symbol, AbortController>();
 
+type RequestConfigWithKey = {
+    __reqKey?: symbol;
+};
+
 const apiClient = axios.create({
     baseURL: baseURL,
     withCredentials: true,
@@ -16,7 +20,7 @@ apiClient.interceptors.request.use(async (config) => {
     // set up abort controller to cancel requests
     const controller = new AbortController();
     const key = Symbol();
-    (config as any).__reqKey = key;
+    (config as RequestConfigWithKey).__reqKey = key;
     controllers.set(key, controller);
     config.signal = controller.signal;
 
@@ -32,15 +36,16 @@ apiClient.interceptors.request.use(async (config) => {
                 "Authorization"
             ] = `Bearer ${token}`;
         }
-    } catch (err) {
-
+    } catch {
+        // Some endpoints support anonymous access, so continue without a token
+        // when no authenticated Amplify session is available.
     }
 
     return config;
 });
 
-const cleanup = (config: any) => {
-    const key: symbol = config?.__reqKey;
+const cleanup = (config: unknown) => {
+    const key = (config as RequestConfigWithKey | undefined)?.__reqKey;
     if (key) controllers.delete(key);
 };
 

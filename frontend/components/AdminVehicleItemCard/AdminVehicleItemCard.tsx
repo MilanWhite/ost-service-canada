@@ -12,6 +12,16 @@ interface Props {
     vehicle: Vehicle;
 }
 
+type AdminCardEditableField =
+    | "vin"
+    | "model_year"
+    | "make"
+    | "model"
+    | "container_number"
+    | "destination"
+    | "etd"
+    | "eta";
+
 const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
     const { t, i18n } = useTranslation();
 
@@ -32,7 +42,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
 
     const editableVehicleFields: {
         label: string;
-        field: keyof Vehicle;
+        field: AdminCardEditableField;
         type?: string;
     }[] = [
         { label: t("AuthenticatedView.vin"), field: "vin" },
@@ -43,7 +53,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
 
     const editableLogisticsFields: {
         label: string;
-        field: keyof Vehicle;
+        field: AdminCardEditableField;
         type?: string;
     }[] = [
         {

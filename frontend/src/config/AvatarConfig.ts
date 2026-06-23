@@ -4,7 +4,7 @@ export const getAvatarSrc = (email?: string) => {
   // 1) build initials as before
   const parts = email
     .split("@")[0]
-    .split(/[\._-]+/)
+    .split(/[._-]+/)
     .filter((seg) => !/^\d+$/.test(seg));
 
   const initials =

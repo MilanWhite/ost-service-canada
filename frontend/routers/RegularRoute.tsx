@@ -26,7 +26,7 @@ export const RegularRoute = ({ children }: Props) => {
                 } else {
                     navigate(URLS.root, { replace: true });
                 }
-            } catch (err) {
+            } catch {
                 navigate(URLS.root, { replace: true });
             } finally {
                 setLoading(false);

@@ -59,5 +59,5 @@ export interface DecodedVin {
     powertrain: string;
     model: string;
     
-    [key: string]: any;   // catch‑all for extra fields
+    [key: string]: unknown;   // catch‑all for extra fields
 }

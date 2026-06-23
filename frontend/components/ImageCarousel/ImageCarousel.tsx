@@ -1,21 +1,45 @@
 import { useEffect, useState, type MouseEvent, type WheelEvent } from "react";
 
+interface ImageItem {
+    id?: number;
+    filename?: string;
+    original: string;
+    mobile?: string;
+    thumbnail?: string;
+}
+
 interface Props {
     images: string[];
+    imageItems?: ImageItem[];
     videos: string[];
 }
 
 import { Dialog, DialogBackdrop } from "@headlessui/react";
 import { useTranslation } from "react-i18next";
 
-const ImageCarousel = ({ images, videos }: Props) => {
+const ImageCarousel = ({ images, imageItems, videos }: Props) => {
     const { t } = useTranslation();
     const isEnhancedViewer =
         import.meta.env.VITE_IMAGE_VIEWER_VARIANT !== "bare";
 
     const [isCarouselFullscreen, setIsCarouselFullscreen] = useState(false);
 
-    const total = images.length + videos.length;
+    const carouselImages =
+        imageItems && imageItems.length > 0
+            ? imageItems.map((item) => ({
+                  src: item.original,
+                  mobileSrc: item.mobile || item.original,
+                  thumbnailSrc: item.thumbnail || item.mobile || item.original,
+                  filename: item.filename,
+              }))
+            : images.map((image) => ({
+                  src: image,
+                  mobileSrc: image,
+                  thumbnailSrc: image,
+                  filename: undefined,
+              }));
+
+    const total = carouselImages.length + videos.length;
     const [currentIndex, setCurrentIndex] = useState(0);
     const prevImage = () => setCurrentIndex((i) => (i - 1 + total) % total);
     const nextImage = () => setCurrentIndex((i) => (i + 1) % total);
@@ -26,7 +50,7 @@ const ImageCarousel = ({ images, videos }: Props) => {
         }
     }, [currentIndex, total]);
 
-    if (!images || images.length === 0) {
+    if (total === 0) {
         return (
             <div className="text-center text-gray-500">
                 {t("AuthenticatedView.Errors.no_images_available")}
@@ -34,12 +58,19 @@ const ImageCarousel = ({ images, videos }: Props) => {
         );
     }
 
-    const isVideo = currentIndex >= images.length;
+    const isVideo = currentIndex >= carouselImages.length;
+    const currentImage = isVideo ? null : carouselImages[currentIndex];
     const src = isVideo
-        ? videos[currentIndex - images.length]
-        : images[currentIndex];
+        ? videos[currentIndex - carouselImages.length]
+        : currentImage?.src ?? "";
     const mediaItems = [
-        ...images.map((image) => ({ type: "image" as const, src: image })),
+        ...carouselImages.map((image) => ({
+            type: "image" as const,
+            src: image.src,
+            mobileSrc: image.mobileSrc,
+            thumbnailSrc: image.thumbnailSrc,
+            filename: image.filename,
+        })),
         ...videos.map((video) => ({ type: "video" as const, src: video })),
     ];
 
@@ -101,14 +132,14 @@ const ImageCarousel = ({ images, videos }: Props) => {
                                         preload="metadata"
                                         className="h-full w-full object-cover"
                                     />
-                                ) : (
+                                ) : item.type === "image" ? (
                                     <img
-                                        src={item.src}
+                                        src={item.thumbnailSrc}
                                         alt={`Slide ${index + 1} thumbnail`}
                                         className="h-full w-full object-cover"
                                         loading="lazy"
                                     />
-                                )}
+                                ) : null}
                             </button>
                         );
                     })}
@@ -116,6 +147,25 @@ const ImageCarousel = ({ images, videos }: Props) => {
             </div>
         </div>
     );
+
+    const renderImage = (className: string, fullscreen = false) => {
+        if (!currentImage) return null;
+
+        return (
+            <picture>
+                <source
+                    media="(max-width: 640px)"
+                    srcSet={currentImage.mobileSrc}
+                />
+                <img
+                    src={currentImage.src}
+                    alt={`Slide ${currentIndex + 1}`}
+                    onClick={fullscreen ? stopFullscreenClose : undefined}
+                    className={className}
+                />
+            </picture>
+        );
+    };
 
     return (
         <>
@@ -154,12 +204,10 @@ const ImageCarousel = ({ images, videos }: Props) => {
                                     className="max-h-full max-w-full object-contain"
                                 />
                             ) : (
-                                <img
-                                    src={src}
-                                    alt={`Slide ${currentIndex + 1}`}
-                                    onClick={stopFullscreenClose}
-                                    className="max-h-full max-w-full object-contain"
-                                />
+                                renderImage(
+                                    "max-h-full max-w-full object-contain",
+                                    true
+                                )
                             )}
 
                             <button
@@ -222,11 +270,9 @@ const ImageCarousel = ({ images, videos }: Props) => {
                                 className="max-h-[55vh] w-full rounded-lg object-contain shadow-md sm:max-h-none"
                             />
                         ) : (
-                            <img
-                                src={src}
-                                alt={`Slide ${currentIndex + 1}`}
-                                className="max-h-[55vh] w-full rounded-lg object-contain shadow-md sm:max-h-none sm:object-cover"
-                            />
+                            renderImage(
+                                "max-h-[55vh] w-full rounded-lg object-contain shadow-md sm:max-h-none sm:object-cover"
+                            )
                         )}
                     </div>
 

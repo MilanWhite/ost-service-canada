@@ -49,16 +49,20 @@ const UserVehiclePage = ({ vehicle }: Props) => {
         vehicle.vehicleThumbnail || imageFallback || vehicle.vehicleThumbnailMobile || "";
     const bannerMobileThumbnail =
         vehicle.vehicleThumbnailMobile || imageFallback || vehicle.vehicleThumbnail || "";
+    const photoImageItems = vehicle.vehicleImageItems ?? [];
     const nonThumbnailImages = (vehicle.vehicleImages ?? []).filter(
         (image) =>
             !thumbnailSources.has(normalizeAsset(image)) &&
-            (!thumbnailName || getNameFromUrl(image).toLowerCase() !== thumbnailName)
+            (!thumbnailName ||
+                getNameFromUrl(image).toLowerCase() !== thumbnailName)
     );
     const thumbnailImages = (vehicle.vehicleImages ?? []).filter(
         (image) => !nonThumbnailImages.includes(image)
     );
     const photoImages =
-        nonThumbnailImages.length > 0
+        photoImageItems.length > 0
+            ? photoImageItems.map((item) => item.original)
+            : nonThumbnailImages.length > 0
             ? [...nonThumbnailImages, ...thumbnailImages]
             : vehicle.vehicleImages ?? [];
 
@@ -218,7 +222,8 @@ const UserVehiclePage = ({ vehicle }: Props) => {
                             <div className="mt-4 border-t border-gray-200 pt-4">
                                 <ImageCarousel
                                     images={photoImages}
-                                    videos={[]}
+                                    imageItems={photoImageItems}
+                                    videos={vehicle.vehicleVideos ?? []}
                                 />
                             </div>
                         </section>

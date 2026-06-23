@@ -5,6 +5,14 @@ export interface User {
     phone_number: string;
 }
 
+export interface VehicleImageItem {
+    id: number;
+    filename: string;
+    original: string;
+    mobile?: string;
+    thumbnail?: string;
+}
+
 export interface Vehicle {
     id: number;
     vehicle_name: string;
@@ -37,6 +45,7 @@ export interface Vehicle {
 
     // optional
     vehicleImages?: string[];
+    vehicleImageItems?: VehicleImageItem[];
     vehicleVideos?: string[];
     vehicleThumbnail?: string;
     vehicleThumbnailMobile?: string;

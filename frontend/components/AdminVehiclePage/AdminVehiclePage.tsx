@@ -70,24 +70,35 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     );
     const normName = (u: string) =>
         decodeURIComponent(u.split("/").pop()!.split("?")[0]);
+    const existingImageItems = useMemo(
+        () =>
+            vehicle.vehicleImageItems && vehicle.vehicleImageItems.length > 0
+                ? vehicle.vehicleImageItems.map((item) => ({
+                      original: item.original,
+                      filename: item.filename,
+                  }))
+                : (initial.vehicleImages ?? []).map((url) => ({
+                      original: url,
+                      filename: normName(url),
+                  })),
+        [initial.vehicleImages, vehicle.vehicleImageItems]
+    );
 
     useEffect(() => {
         let cancelled = false;
 
         (async () => {
-            const urls = initial.vehicleImages ?? [];
-            if (urls.length === 0) {
+            if (existingImageItems.length === 0) {
                 if (!cancelled) setImageFiles([]);
                 return;
             }
 
-            const filePromises = urls.map(async (rawUrl) => {
+            const filePromises = existingImageItems.map(async (item) => {
                 try {
-                    const res = await fetch(rawUrl);
+                    const res = await fetch(item.original);
                     if (!res.ok) return null;
                     const blob = await res.blob();
-                    const name = normName(rawUrl);
-                    return new File([blob], name, { type: blob.type });
+                    return new File([blob], item.filename, { type: blob.type });
                 } catch {
                     return null;
                 }
@@ -105,23 +116,28 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         return () => {
             cancelled = true;
         };
-    }, [initial.vehicleImages]);
+    }, [existingImageItems]);
 
     const { toAdd, toDelete } = useMemo(() => {
         const originalNames = new Set(
-            (initial.vehicleImages ?? []).map(normName)
+            existingImageItems.map((item) => item.filename)
         );
 
         const add = imageFiles.filter(
             (f) => !originalNames.has(normName(f.name))
         );
 
-        const del = (initial.vehicleImages ?? []).filter(
-            (url) => !imageFiles.some((f) => normName(url) === normName(f.name))
-        );
+        const del = existingImageItems
+            .filter(
+                (item) =>
+                    !imageFiles.some(
+                        (file) => item.filename === normName(file.name)
+                    )
+            )
+            .map((item) => item.original);
 
         return { toAdd: add, toDelete: del };
-    }, [imageFiles, initial.vehicleImages]);
+    }, [existingImageItems, imageFiles]);
 
     const [saveError, setSaveError] = useState<string | null>(null);
     const [documentFileError, setDocumentFileError] = useState<string | null>(
@@ -194,18 +210,22 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         imageFallback ||
         vehicle.vehicleThumbnail ||
         "";
+    const photoImageItems = vehicle.vehicleImageItems ?? [];
     const nonThumbnailImages = (vehicle.vehicleImages ?? []).filter(
         (image) =>
             !thumbnailSources.has(normalizeAsset(image)) &&
-            (!thumbnailName || getNameFromUrl(image).toLowerCase() !== thumbnailName)
+            (!thumbnailName ||
+                getNameFromUrl(image).toLowerCase() !== thumbnailName)
     );
     const thumbnailImages = (vehicle.vehicleImages ?? []).filter(
         (image) => !nonThumbnailImages.includes(image)
     );
     const photoImages =
-        nonThumbnailImages.length > 0
-            ? [...nonThumbnailImages, ...thumbnailImages]
-            : vehicle.vehicleImages ?? [];
+        photoImageItems.length > 0
+            ? photoImageItems.map((item) => item.original)
+            : nonThumbnailImages.length > 0
+              ? [...nonThumbnailImages, ...thumbnailImages]
+              : vehicle.vehicleImages ?? [];
 
     const documents = [
         {
@@ -602,7 +622,8 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                 <div className="mt-4 border-t border-gray-200 pt-4">
                                     <ImageCarousel
                                         images={photoImages}
-                                        videos={[]}
+                                        imageItems={photoImageItems}
+                                        videos={vehicle.vehicleVideos ?? []}
                                     />
                                 </div>
                             </section>

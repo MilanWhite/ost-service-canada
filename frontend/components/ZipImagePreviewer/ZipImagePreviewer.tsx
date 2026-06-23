@@ -320,7 +320,13 @@ export default function ZipImagePreviewer({
         setDragOverKey(getFileKey(targetItem.file));
     };
 
-    const handleDrop = (targetItem: MediaItem, targetIndex: number) => {
+    const handleDrop = (
+        e: React.DragEvent<HTMLDivElement>,
+        targetItem: MediaItem,
+        targetIndex: number
+    ) => {
+        e.preventDefault();
+        e.stopPropagation();
         const activeDrag = dragState.current;
 
         if (activeDrag && activeDrag.kind === targetItem.kind) {
@@ -419,8 +425,8 @@ export default function ZipImagePreviewer({
                                     onDragOver={(e) =>
                                         handleDragOver(e, item)
                                     }
-                                    onDrop={() => {
-                                        handleDrop(item, kindIndex);
+                                    onDrop={(e) => {
+                                        handleDrop(e, item, kindIndex);
                                     }}
                                     onDragEnd={() => {
                                         dragState.current = null;
@@ -483,6 +489,7 @@ export default function ZipImagePreviewer({
                                             <img
                                                 src={urlMap.get(itemKey)}
                                                 alt={file.name}
+                                                draggable={false}
                                                 className="w-full aspect-video object-contain rounded-md bg-gray-50"
                                             />
                                         </button>
@@ -496,6 +503,7 @@ export default function ZipImagePreviewer({
                                             <video
                                                 src={urlMap.get(itemKey)}
                                                 controls
+                                                draggable={false}
                                                 preload="metadata"
                                                 className="w-full aspect-video object-contain rounded-md bg-black"
                                             />

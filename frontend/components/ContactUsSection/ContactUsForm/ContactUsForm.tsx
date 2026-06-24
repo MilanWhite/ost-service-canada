@@ -246,7 +246,7 @@ const ContactUsForm = () => {
                         </div>
                         <div className="sm:col-span-2">
                             <label
-                                htmlFor="language"
+                                htmlFor="contact-language"
                                 className="block text-sm/6 font-semibold text-gray-900"
                             >
                                 {t("ContactPage.form_language_label")}
@@ -254,7 +254,7 @@ const ContactUsForm = () => {
                             <div className="mt-2.5 grid grid-cols-1">
                                 <select
                                     className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-primary sm:text-sm/6"
-                                    id="language"
+                                    id="contact-language"
                                     {...register("language")}
                                 >
                                     <option value="english">

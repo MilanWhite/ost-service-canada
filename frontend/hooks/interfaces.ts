@@ -28,7 +28,6 @@ export interface Vehicle {
     user_email: string;
     created_at: string;
 
-    container_number: string | null;
     port_of_origin: string | null;
     port_of_destination: string | null;
     delivery_address: string | null;

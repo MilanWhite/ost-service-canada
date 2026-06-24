@@ -17,7 +17,6 @@ export interface CreateVehicleInfo {
     deliveryAddress: string,
     portOfOrigin: string,
     portOfDestination: string,
-    containerNumber: string,
     receiverId: string,
 
     vin: string;
@@ -62,7 +61,6 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("deliveryAddress", createVehicleInfo.deliveryAddress);
             formData.append("portOfOrigin", createVehicleInfo.portOfOrigin);
             formData.append("portOfDestination", createVehicleInfo.portOfDestination);
-            formData.append("containerNumber", createVehicleInfo.containerNumber);
             formData.append("receiverId", createVehicleInfo.receiverId);
 
             formData.append("vin", createVehicleInfo.vin);

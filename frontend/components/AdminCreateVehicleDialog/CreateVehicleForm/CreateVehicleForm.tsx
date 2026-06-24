@@ -74,11 +74,6 @@ export const createVehicleSchema = z.object({
         .trim()
         .max(255, { message: "AuthenticatedView.Errors.exceeded_length" }),
 
-    containerNumber: z
-        .string()
-        .trim()
-        .max(20, { message: "AuthenticatedView.Errors.exceeded_length" }),
-
     receiverId: z
         .string()
         .trim()
@@ -165,7 +160,6 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
             deliveryAddress: data.deliveryAddress,
             portOfOrigin: data.portOfOrigin,
             portOfDestination: data.portOfDestination,
-            containerNumber: data.containerNumber,
             receiverId: data.receiverId,
 
             vin: data.vin,
@@ -213,7 +207,6 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
             deliveryAddress: "",
             portOfOrigin: "",
             portOfDestination: "",
-            containerNumber: "",
             receiverId: "",
             vin: "",
             modelYear: "",

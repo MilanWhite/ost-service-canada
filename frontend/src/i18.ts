@@ -327,7 +327,6 @@ i18n.use(LanguageDetector)
                         delivery_address: "Delivery Address",
                         port_of_origin: "Port of Origin",
                         port_of_destination: "Port of Destination",
-                        container_number: "Container #",
                         receiver_id: "Receiver Id",
 
                         vin: "VIN",
@@ -436,8 +435,6 @@ i18n.use(LanguageDetector)
                                 "Port of origin is required",
                             port_of_destination_required:
                                 "Port of destination is required",
-                            container_number_required:
-                                "Container number is required",
                             receiver_id_required: "Receiver ID is required",
                             invalid_vin:
                                 "VIN must be 17 characters (I, O, Q not allowed)",
@@ -773,7 +770,6 @@ i18n.use(LanguageDetector)
                         delivery_address: "Адрес доставки",
                         port_of_origin: "Порт отправления",
                         port_of_destination: "Порт назначения",
-                        container_number: "Номер контейнера",
                         receiver_id: "ID получателя",
 
                         vin: "VIN",
@@ -885,8 +881,6 @@ i18n.use(LanguageDetector)
                                 "Порт отправления обязателен",
                             port_of_destination_required:
                                 "Порт назначения обязателен",
-                            container_number_required:
-                                "Номер контейнера обязателен",
                             receiver_id_required: "ID получателя обязателен",
                             invalid_vin: "VIN должен содержать 17 символов (буквы I, O, Q недопустимы)",
 
@@ -1219,7 +1213,6 @@ i18n.use(LanguageDetector)
                         delivery_address: "Адреса доставки",
                         port_of_origin: "Порт відправлення",
                         port_of_destination: "Порт призначення",
-                        container_number: "Номер контейнера",
                         receiver_id: "ID одержувача",
 
                         vin: "VIN",
@@ -1330,8 +1323,6 @@ i18n.use(LanguageDetector)
                                 "Порт відправлення є обов’язковим",
                             port_of_destination_required:
                                 "Порт призначення є обов’язковим",
-                            container_number_required:
-                                "Номер контейнера є обов’язковим",
                             receiver_id_required:
                                 "ID одержувача є обов’язковим",
                             invalid_vin: "VIN має складатися з 17 символів (букви I, O, Q не допускаються)",

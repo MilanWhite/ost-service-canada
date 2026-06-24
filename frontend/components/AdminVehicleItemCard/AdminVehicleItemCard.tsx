@@ -10,6 +10,7 @@ import VehicleThumbnail from "../VehicleThumbnail";
 
 interface Props {
     vehicle: Vehicle;
+    vehicleRefetch?: () => Promise<void>;
 }
 
 type AdminCardEditableField =
@@ -17,12 +18,12 @@ type AdminCardEditableField =
     | "model_year"
     | "make"
     | "model"
-    | "container_number"
+    | "powertrain"
     | "destination"
     | "etd"
     | "eta";
 
-const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
+const AdminVehicleItemCard = ({ vehicle: initial, vehicleRefetch }: Props) => {
     const { t, i18n } = useTranslation();
 
     const {
@@ -38,6 +39,7 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
 
     const handleSave = async () => {
         await saveChanges();
+        await vehicleRefetch?.();
     };
 
     const editableVehicleFields: {
@@ -57,8 +59,8 @@ const AdminVehicleItemCard = ({ vehicle: initial }: Props) => {
         type?: string;
     }[] = [
         {
-            label: t("AuthenticatedView.container_number"),
-            field: "container_number",
+            label: t("AuthenticatedView.powertrain"),
+            field: "powertrain",
         },
         { label: t("AuthenticatedView.destination"), field: "destination" },
         { label: "ETD", field: "etd", type: "date" },

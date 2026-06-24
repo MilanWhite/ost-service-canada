@@ -52,7 +52,7 @@ def main_get_user_vehicles(sub):
               "model_year",
               "make",
               "model",
-              "container_number",
+              "powertrain",
               "destination",
             }
 
@@ -71,7 +71,7 @@ def main_get_user_vehicles(sub):
                         Vehicle.model_year.ilike(pattern),
                         Vehicle.make.ilike(pattern),
                         Vehicle.model.ilike(pattern),
-                        Vehicle.container_number.ilike(pattern),
+                        Vehicle.powertrain.ilike(pattern),
                         Vehicle.destination.ilike(pattern),
                     )
                 )

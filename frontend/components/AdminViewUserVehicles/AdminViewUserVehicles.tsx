@@ -153,7 +153,11 @@ const AdminViewUserVehicles = () => {
 
             {!vehiclesLoading ? (
                 vehicles.map((vehicle) => (
-                    <AdminVehicleItemCard key={vehicle.id} vehicle={vehicle} />
+                    <AdminVehicleItemCard
+                        key={vehicle.id}
+                        vehicle={vehicle}
+                        vehicleRefetch={vehicleRefetch}
+                    />
                 ))
             ) : (
                 <>

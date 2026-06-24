@@ -7,7 +7,7 @@ export type VehicleFilterField =
     | "model_year"
     | "make"
     | "model"
-    | "container_number"
+    | "powertrain"
     | "destination";
 
 export type VehicleStatusFilter = "both" | "Delivered" | "Not delivered";
@@ -21,7 +21,7 @@ export const VehicleFilterChoices = {
     model_year: "AuthenticatedView.year",
     make: "AuthenticatedView.make",
     model: "AuthenticatedView.model",
-    container_number: "AuthenticatedView.container_number",
+    powertrain: "AuthenticatedView.powertrain",
     destination: "AuthenticatedView.destination",
 }
 
@@ -38,7 +38,6 @@ export const VehicleStatusFilterChoices = {
 //     location: "Location",
 //     shipping_status: "Shipping Status",
 
-//     container_number: "Container Number",
 //     port_of_origin: "Port of Origin",
 //     port_of_destination: "Port of Destination",
 //     delivery_address: "Delivery Address",

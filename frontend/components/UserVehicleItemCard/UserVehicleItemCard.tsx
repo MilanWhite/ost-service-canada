@@ -22,8 +22,8 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
 
     const logisticsDetails = [
         {
-            label: t("AuthenticatedView.container_number"),
-            value: vehicle.container_number,
+            label: t("AuthenticatedView.powertrain"),
+            value: vehicle.powertrain,
         },
         { label: t("AuthenticatedView.destination"), value: vehicle.destination },
         { label: "ETD", value: vehicle.etd },

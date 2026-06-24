@@ -12,6 +12,7 @@ lerna-debug.log*
 __pycache__/
 *.py[cod]
 .venv/
+.agents/
 
 node_modules
 dist

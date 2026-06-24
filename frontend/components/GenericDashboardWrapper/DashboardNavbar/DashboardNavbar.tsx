@@ -11,6 +11,7 @@ import { signOut } from "aws-amplify/auth";
 import { URLS } from "../../../src/config/navigation";
 import LanguageToggle from "../../LanguageToggle";
 import { useTranslation } from "react-i18next";
+import { clearUsersCache } from "../../../hooks/useGetAllUsers";
 
 interface Props {
     dashboardUserNavigation: DashboardUserNavigation[];
@@ -27,6 +28,7 @@ const DashboardNavbar = ({
     const navigate = useNavigate();
 
     const runSignOut = async () => {
+        clearUsersCache();
         await signOut();
         navigate(URLS.root, { replace: true });
     };

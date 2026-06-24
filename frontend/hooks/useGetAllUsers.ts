@@ -11,6 +11,32 @@ const updateUsersCache = (users: User[]) => {
     usersListeners.forEach((listener) => listener(usersCache));
 };
 
+export const getCachedUserBySub = (sub?: string) => {
+    if (!sub) return null;
+    return usersCache.find((user) => user.sub === sub) ?? null;
+};
+
+export const upsertCachedUser = (user: User) => {
+    const existingIndex = usersCache.findIndex(
+        (cachedUser) => cachedUser.sub === user.sub
+    );
+
+    if (existingIndex === -1) {
+        updateUsersCache([...usersCache, user]);
+        return;
+    }
+
+    updateUsersCache(
+        usersCache.map((cachedUser, index) =>
+            index === existingIndex ? { ...cachedUser, ...user } : cachedUser
+        )
+    );
+};
+
+export const clearUsersCache = () => {
+    updateUsersCache([]);
+};
+
 export function useGetAllUsers() {
     const [allUsers, setAllUsers] = useState<User[]>(usersCache);
     const [getAllUsersLoading, setAllUsersLoading] = useState<boolean>(false);

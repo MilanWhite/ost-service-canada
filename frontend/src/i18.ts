@@ -453,6 +453,8 @@ i18n.use(LanguageDetector)
                                 "Failed to create user. Please try again later.",
                             failed_to_create_vehicle:
                                 "Failed to create vehicle. Please try again later.",
+                            duplicate_vin:
+                                "There is already a vehicle with this VIN.",
                             failed_to_delete_vehicle:
                                 "Failed to delete vehicle. Please try again.",
                             failed_to_edit_vehicle:
@@ -898,6 +900,8 @@ i18n.use(LanguageDetector)
                                 "Не удалось создать пользователя. Попробуйте позже.",
                             failed_to_create_vehicle:
                                 "Не удалось добавить автомобиль. Попробуйте позже.",
+                            duplicate_vin:
+                                "There is already a vehicle with this VIN.",
                             failed_to_delete_vehicle:
                                 "Не удалось удалить автомобиль. Попробуйте снова.",
                             failed_to_edit_vehicle:
@@ -1342,6 +1346,8 @@ i18n.use(LanguageDetector)
                                 "Не вдалося створити користувача. Спробуйте пізніше.",
                             failed_to_create_vehicle:
                                 "Не вдалося додати авто. Спробуйте пізніше.",
+                            duplicate_vin:
+                                "There is already a vehicle with this VIN.",
                             failed_to_delete_vehicle:
                                 "Не вдалося видалити авто. Спробуйте ще раз.",
                             failed_to_edit_vehicle:

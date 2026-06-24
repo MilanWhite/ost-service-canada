@@ -1,8 +1,10 @@
 import { useState } from "react";
 import apiClient from "../services/api-client";
-import { CanceledError } from "axios";
+import { CanceledError, isAxiosError } from "axios";
 import { User } from "./interfaces";
 import { useCreateVehicle } from "../contexts/CreateVehicleContext";
+
+const duplicateVinErrorKey = "AuthenticatedView.Errors.duplicate_vin";
 
 export interface CreateVehicleInfo {
     lotNumber: string;
@@ -110,7 +112,11 @@ const useCreateVehicleForm = (user: User) => {
         } catch (err: unknown) {
             if (err instanceof CanceledError) return;
 
-            setCreateVehicleError("AuthenticatedView.Errors.failed_to_create_vehicle");
+            if (isAxiosError(err) && err.response?.status === 409) {
+                setCreateVehicleError(duplicateVinErrorKey);
+            } else {
+                setCreateVehicleError("AuthenticatedView.Errors.failed_to_create_vehicle");
+            }
             setShowCreateVehicleSuccess(false);
         } finally {
             setCreateVehicleLoading(false);

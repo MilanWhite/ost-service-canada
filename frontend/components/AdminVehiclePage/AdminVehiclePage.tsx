@@ -161,7 +161,11 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         } catch (err) {
             if (err instanceof CanceledError) return;
 
-            setSaveError("AuthenticatedView.Errors.failed_to_edit_vehicle");
+            setSaveError(
+                err instanceof Error
+                    ? err.message
+                    : "AuthenticatedView.Errors.failed_to_edit_vehicle"
+            );
         }
     };
 

@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
 import apiClient from "../services/api-client";
 import { Vehicle } from "./interfaces";
-import { CanceledError } from "axios";
+import { CanceledError, isAxiosError } from "axios";
+
+const duplicateVinErrorKey = "AuthenticatedView.Errors.duplicate_vin";
 
 export interface EditExtras {
     newImages?: File[];
@@ -118,11 +120,14 @@ export function useEditVehicle(
                 setIsEditing(false);
                 setEditVehicleError(null);
             } catch (err) {
-                if (!(err instanceof CanceledError)) {
-                    setEditVehicleError(
-                        "AuthenticatedView.Errors.failed_to_edit_vehicle"
-                    );
-                }
+                if (err instanceof CanceledError) return;
+
+                const message =
+                    isAxiosError(err) && err.response?.status === 409
+                        ? duplicateVinErrorKey
+                        : "AuthenticatedView.Errors.failed_to_edit_vehicle";
+                setEditVehicleError(message);
+                throw new Error(message);
             } finally {
                 setIsEditVehicleLoading(false);
             }

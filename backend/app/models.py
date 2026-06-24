@@ -48,6 +48,7 @@ class Vehicle(db.Model):
             "created_at",
         ),
         db.Index("ix_vehicles_created_at", "created_at"),
+        UniqueConstraint("vin", name="uq_vehicles_vin"),
         CheckConstraint(
             "shipping_status IN ('Delivered', 'Not delivered')",
             name="ck_vehicles_shipping_status",

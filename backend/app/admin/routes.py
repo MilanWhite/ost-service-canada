@@ -21,6 +21,7 @@ from app.cognito import cognito_client, s3_client
 from app.config import Config
 from app.models import User, Vehicle
 from app.extensions import db
+from sqlalchemy.exc import IntegrityError
 from vpic import Client
 
 
@@ -32,6 +33,11 @@ VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
 VIN_VALIDATION_ERROR = (
     "VIN must contain exactly 17 letters or digits; I, O, and Q are not allowed"
 )
+VIN_DUPLICATE_ERROR = "There is already a vehicle with this VIN"
+
+
+class DuplicateVinError(ValueError):
+    pass
 
 
 def empty_to_none(value):
@@ -49,6 +55,82 @@ def normalize_vin(value):
     if not VIN_PATTERN.fullmatch(vin):
         raise ValueError(VIN_VALIDATION_ERROR)
     return vin
+
+
+def ensure_unique_vin(vin, vehicle_id=None):
+    query = Vehicle.query.filter(Vehicle.vin == vin)
+    if vehicle_id is not None:
+        query = query.filter(Vehicle.id != vehicle_id)
+    if query.first() is not None:
+        raise DuplicateVinError(VIN_DUPLICATE_ERROR)
+
+
+def is_duplicate_vin_error(error):
+    return "uq_vehicles_vin" in str(getattr(error, "orig", error))
+
+
+def values_match(left, right):
+    if left is None or right is None:
+        return left is None and right is None
+    return left == right
+
+
+def numeric_values_match(left, right):
+    if left is None or right is None:
+        return left is None and right is None
+    return float(left) == float(right)
+
+
+def vehicle_matches_create_payload(vehicle, payload):
+    for field, expected in payload.items():
+        actual = getattr(vehicle, field)
+        if field in {"price_delivery", "price_shipping"}:
+            if not numeric_values_match(actual, expected):
+                return False
+        elif not values_match(actual, expected):
+            return False
+    return True
+
+
+def safe_filenames(files):
+    return [safe_upload_filename(file.filename) for file in files]
+
+
+def media_rows_by_type(vehicle, media_type):
+    return [media for media in vehicle.media if media.media_type == media_type]
+
+
+def vehicle_matches_create_media(vehicle, image_order, thumbnail, images, videos, documents):
+    if list(vehicle.image_order or []) != image_order:
+        return False
+
+    thumbnail_rows = media_rows_by_type(vehicle, "thumbnail")
+    thumbnail_source = thumbnail or (images[0] if images else None)
+    if thumbnail_source:
+        expected_name = safe_upload_filename(thumbnail_source.filename)
+        if not thumbnail_rows:
+            return False
+        if any(row.original_filename != expected_name for row in thumbnail_rows):
+            return False
+    elif thumbnail_rows:
+        return False
+
+    existing_video_names = sorted(
+        row.original_filename for row in media_rows_by_type(vehicle, "video")
+    )
+    if existing_video_names != sorted(safe_filenames(videos)):
+        return False
+
+    expected_documents = {
+        document_type: safe_upload_filename(file.filename)
+        for document_type, file in documents.items()
+        if file
+    }
+    existing_documents = {
+        row.document_type: row.original_filename
+        for row in media_rows_by_type(vehicle, "document")
+    }
+    return existing_documents == expected_documents
 
 
 def parse_optional_float(value):
@@ -285,7 +367,14 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
     s3_transaction = S3UploadTransaction()
     transaction_committed = False
     try:
-        payload = json.loads(request.form["payload"])
+        raw_payload = request.form.get("payload")
+        if raw_payload is None:
+            return error_response(message="Missing vehicle edit payload", code=400)
+
+        payload = json.loads(raw_payload)
+        if not isinstance(payload, dict):
+            return error_response(message="Vehicle edit payload must be an object", code=400)
+
         new_files = request.files.getlist("new_images")
         delete_keys = request.form.getlist("delete_keys[]")
 
@@ -325,9 +414,16 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
             payload["model_year"] = payload["modelYear"]
 
         vehicle = Vehicle.query.get_or_404(vehicle_id)
+        updates = {}
         for field, cast in allowed.items():
             if field in payload:
-                setattr(vehicle, field, cast(payload[field]))
+                updates[field] = cast(payload[field])
+
+        if "vin" in updates:
+            ensure_unique_vin(updates["vin"], vehicle_id=vehicle.id)
+
+        for field, value in updates.items():
+            setattr(vehicle, field, value)
 
         delete_vehicle_images_for_keys(
             vehicle, delete_keys, s3_transaction=s3_transaction
@@ -385,6 +481,14 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
         )
         return success_response({"vehicle": v_dict})
 
+    except DuplicateVinError as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=str(e), code=409)
     except (TypeError, ValueError) as e:
         db.session.rollback()
         if not transaction_committed:
@@ -393,6 +497,16 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
                 "staged vehicle media objects after rollback",
             )
         return error_response(message=str(e), code=400)
+    except IntegrityError as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        if is_duplicate_vin_error(e):
+            return error_response(message=VIN_DUPLICATE_ERROR, code=409)
+        return error_response(message=str(e), code=500)
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -471,6 +585,31 @@ def admin_create_vehicle(sub):
             return error_response(message="User not found", code=404)
         user_email = user.email
 
+        vehicle_payload = {
+            "cognito_sub": sub,
+            "lot_number": lot_number,
+            "auction_name": auction_name,
+            "location": location,
+            "shipping_status": shipping_status,
+            "price_delivery": price_delivery,
+            "price_shipping": price_shipping,
+            "user_email": user_email,
+            "container_number": container_number,
+            "delivery_address": delivery_address,
+            "port_of_destination": port_of_destination,
+            "port_of_origin": port_of_origin,
+            "destination": destination,
+            "etd": etd,
+            "eta": eta,
+            "receiver_id": receiver_id,
+            "vin": vin,
+            "model_year": model_year,
+            "make": make,
+            "powertrain": powertrain,
+            "model": model,
+            "color": color,
+        }
+
         images = request.files.getlist("images")
         thumbnail = request.files.get("thumbnail")
         videos = request.files.getlist("videos")
@@ -479,39 +618,33 @@ def admin_create_vehicle(sub):
         title_document = request.files.get("titleDocument")
         bill_of_lading_document = request.files.get("billOfLadingDocument")
         swb_release_document = request.files.get("swbReleaseDocument")
+        documents = {
+            "bill_of_sale_document": bill_of_sale_document,
+            "bill_of_lading_document": bill_of_lading_document,
+            "title_document": title_document,
+            "swb_release_document": swb_release_document,
+        }
 
         image_order = [
             safe_upload_filename(image.filename)
             for image in images
         ]
+        vehicle_payload["image_order"] = image_order
+
+        existing_vehicle = Vehicle.query.filter_by(vin=vin).first()
+        if existing_vehicle is not None:
+            if (
+                existing_vehicle.cognito_sub == sub
+                and vehicle_matches_create_payload(existing_vehicle, vehicle_payload)
+                and vehicle_matches_create_media(
+                    existing_vehicle, image_order, thumbnail, images, videos, documents
+                )
+            ):
+                return success_response()
+            return error_response(message=VIN_DUPLICATE_ERROR, code=409)
 
         new_vehicle = Vehicle(
-            cognito_sub=sub,
-            lot_number=lot_number,
-            auction_name=auction_name,
-            location=location,
-            shipping_status=shipping_status,
-            price_delivery=price_delivery,
-            price_shipping=price_shipping,
-            user_email=user_email,
-
-            container_number=container_number,
-            delivery_address=delivery_address,
-            port_of_destination=port_of_destination,
-            port_of_origin=port_of_origin,
-            destination=destination,
-            etd=etd,
-            eta=eta,
-            receiver_id=receiver_id,
-
-            vin=vin,
-            model_year=model_year,
-            make=make,
-            powertrain=powertrain,
-            model=model,
-            color=color,
-
-            image_order=image_order
+            **vehicle_payload,
         )
 
         db.session.add(new_vehicle)
@@ -565,6 +698,14 @@ def admin_create_vehicle(sub):
 
         return success_response()
 
+    except DuplicateVinError as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=str(e), code=409)
     except (TypeError, ValueError) as e:
         db.session.rollback()
         if not transaction_committed:
@@ -573,6 +714,16 @@ def admin_create_vehicle(sub):
                 "staged vehicle media objects after rollback",
             )
         return error_response(message=str(e), code=400)
+    except IntegrityError as e:
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        if is_duplicate_vin_error(e):
+            return error_response(message=VIN_DUPLICATE_ERROR, code=409)
+        return error_response(message=str(e), code=500)
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -588,18 +739,18 @@ def admin_create_vehicle(sub):
 @cognito_auth_required(["Admin"])
 def admin_delete_vehicle(sub, vehicle_id):
     try:
-        vehicle = (
-            Vehicle.query
-            .filter_by(id=vehicle_id, cognito_sub=sub)
-            .first()
-        )
+        vehicle = Vehicle.query.filter_by(id=vehicle_id).first()
 
         if vehicle is None:
-            return error_response(message="Vehicle not found in database", code=404)
+            return success_response()
 
-        delete_s3_keys(vehicle_s3_keys(vehicle))
+        if vehicle.cognito_sub != sub:
+            return error_response(message="Vehicle not found", code=404)
+
+        keys_to_delete = vehicle_s3_keys(vehicle)
         db.session.delete(vehicle)
         db.session.commit()
+        cleanup_s3_keys(keys_to_delete, "deleted vehicle media objects")
     except Exception as e:
         db.session.rollback()
         return error_response(message="Failed to delete vehicle", code=500)

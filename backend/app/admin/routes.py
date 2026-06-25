@@ -1,6 +1,12 @@
 from datetime import date
+from io import BytesIO
+import mimetypes
+import os
 import re
-from flask import Blueprint, current_app, json, request
+from zipfile import BadZipFile, ZipFile
+from flask import Blueprint, current_app, has_app_context, json, request
+from PIL import UnidentifiedImageError
+from werkzeug.datastructures import FileStorage
 from app.decorators import cognito_auth_required, time_api_call
 from app.media import (
     build_vehicle_response,
@@ -14,6 +20,7 @@ from app.media import (
     S3UploadTransaction,
     safe_upload_filename,
     set_vehicle_image_order,
+    validate_image_upload,
     vehicle_s3_keys,
 )
 from app.utils import success_response, error_response
@@ -34,9 +41,31 @@ VIN_VALIDATION_ERROR = (
     "VIN must contain exactly 17 letters or digits; I, O, and Q are not allowed"
 )
 VIN_DUPLICATE_ERROR = "There is already a vehicle with this VIN"
+IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".jfif",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".heic",
+    ".heif",
+    ".avif",
+}
+ZIP_EXTENSIONS = {".zip"}
+IGNORED_ZIP_NAMES = {".ds_store", "thumbs.db"}
+MAX_IMAGE_UPLOADS_PER_REQUEST = 300
+MAX_ZIP_IMAGE_COUNT = 300
+MAX_ZIP_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
+MAX_ZIP_ENTRY_BYTES = 50 * 1024 * 1024
 
 
 class DuplicateVinError(ValueError):
+    pass
+
+
+class VehicleUploadError(ValueError):
     pass
 
 
@@ -94,6 +123,166 @@ def vehicle_matches_create_payload(vehicle, payload):
 
 def safe_filenames(files):
     return [safe_upload_filename(file.filename) for file in files]
+
+
+def is_zip_upload(file):
+    filename = getattr(file, "filename", "")
+    ext = os.path.splitext(filename)[1].lower()
+    mimetype = getattr(file, "mimetype", "")
+    return ext in ZIP_EXTENSIONS or mimetype in {
+        "application/zip",
+        "application/x-zip-compressed",
+    }
+
+
+def is_supported_image_name(filename):
+    return os.path.splitext(filename)[1].lower() in IMAGE_EXTENSIONS
+
+
+def is_ignored_zip_entry(entry_name):
+    normalized = entry_name.replace("\\", "/")
+    parts = [part for part in normalized.split("/") if part]
+    if not parts:
+        return True
+    basename = parts[-1].lower()
+    return "__macosx" in {part.lower() for part in parts} or basename in IGNORED_ZIP_NAMES
+
+
+def uploaded_file_bytes(file):
+    stream = getattr(file, "stream", file)
+    if hasattr(stream, "seek"):
+        stream.seek(0)
+    data = stream.read()
+    if hasattr(stream, "seek"):
+        stream.seek(0)
+    return data
+
+
+def image_filestorage(filename, data):
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return FileStorage(
+        stream=BytesIO(data),
+        filename=safe_upload_filename(filename),
+        content_type=content_type,
+    )
+
+
+def log_upload_warning(message, *args):
+    if has_app_context():
+        current_app.logger.warning(message, *args)
+
+
+def unique_safe_filename(filename, existing_names):
+    safe_name = safe_upload_filename(filename)
+    stem, ext = os.path.splitext(safe_name)
+    candidate = safe_name
+    index = 1
+    while candidate.lower() in existing_names:
+        candidate = f"{stem}({index}){ext}"
+        index += 1
+    existing_names.add(candidate.lower())
+    return candidate
+
+
+def validate_image_file(file, field_name):
+    filename = safe_upload_filename(getattr(file, "filename", "image"))
+    if getattr(file, "_vehicle_image_validated", False):
+        return
+    try:
+        validate_image_upload(file)
+    except ValueError as exc:
+        log_upload_warning(
+            "Invalid vehicle image upload field=%s filename=%s error=%s",
+            field_name,
+            filename,
+            exc,
+        )
+        raise VehicleUploadError(f"{field_name}: {exc}") from exc
+
+
+def validate_image_files(field_name, files):
+    if len(files) > MAX_IMAGE_UPLOADS_PER_REQUEST:
+        raise VehicleUploadError(
+            f"{field_name}: too many image files "
+            f"({len(files)} > {MAX_IMAGE_UPLOADS_PER_REQUEST})"
+        )
+
+    for file in files:
+        validate_image_file(file, field_name)
+
+
+def expand_zip_image_upload(file):
+    filename = safe_upload_filename(getattr(file, "filename", "images.zip"))
+    try:
+        with ZipFile(BytesIO(uploaded_file_bytes(file))) as archive:
+            images = []
+            existing_names = set()
+            total_uncompressed_bytes = 0
+            for entry in archive.infolist():
+                if entry.is_dir() or is_ignored_zip_entry(entry.filename):
+                    continue
+                entry_name = os.path.basename(entry.filename)
+                if not entry_name or not is_supported_image_name(entry_name):
+                    continue
+                if entry.file_size > MAX_ZIP_ENTRY_BYTES:
+                    raise VehicleUploadError(
+                        f"Image ZIP entry is too large: {filename}/{entry_name}"
+                    )
+                total_uncompressed_bytes += entry.file_size
+                if total_uncompressed_bytes > MAX_ZIP_UNCOMPRESSED_BYTES:
+                    raise VehicleUploadError(
+                        f"Image ZIP file is too large after extraction: {filename}"
+                    )
+                if len(images) >= MAX_ZIP_IMAGE_COUNT:
+                    raise VehicleUploadError(
+                        f"Image ZIP contains too many images: {filename}"
+                    )
+
+                entry_bytes = archive.read(entry)
+                unique_name = unique_safe_filename(entry_name, existing_names)
+                image_file = image_filestorage(unique_name, entry_bytes)
+                try:
+                    validate_image_upload(image_file)
+                except ValueError as exc:
+                    log_upload_warning(
+                        "Invalid vehicle image ZIP entry zip=%s entry=%s error=%s",
+                        filename,
+                        entry.filename,
+                        exc,
+                    )
+                    raise VehicleUploadError(
+                        f"Invalid image inside ZIP: {filename}/{entry_name}"
+                    ) from exc
+                image_file._vehicle_image_validated = True
+                images.append(image_file)
+    except BadZipFile as exc:
+        raise VehicleUploadError(f"Invalid image ZIP file: {filename}") from exc
+
+    if not images:
+        raise VehicleUploadError(f"Image ZIP file contains no supported images: {filename}")
+    return images
+
+
+def expand_image_uploads(files):
+    expanded = []
+    for file in files:
+        if is_zip_upload(file):
+            expanded.extend(expand_zip_image_upload(file))
+        else:
+            expanded.append(file)
+    return expanded
+
+
+def normalize_thumbnail_upload(thumbnail, images):
+    if thumbnail and is_zip_upload(thumbnail):
+        return expand_zip_image_upload(thumbnail)[0]
+    return thumbnail or (images[0] if images else None)
+
+
+def validate_vehicle_image_uploads(images, thumbnail=None, image_field="images"):
+    validate_image_files(image_field, images)
+    if thumbnail:
+        validate_image_file(thumbnail, "thumbnail")
 
 
 def media_rows_by_type(vehicle, media_type):
@@ -375,13 +564,20 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
         if not isinstance(payload, dict):
             return error_response(message="Vehicle edit payload must be an object", code=400)
 
-        new_files = request.files.getlist("new_images")
+        new_files = expand_image_uploads(request.files.getlist("new_images"))
         delete_keys = request.form.getlist("delete_keys[]")
 
         new_image_order = request.form.getlist("image_order[]")
         delete_document_types = set(request.form.getlist("delete_document_types[]"))
 
         new_thumbnail = request.files.get("new_thumbnail")
+        if new_thumbnail and is_zip_upload(new_thumbnail):
+            new_thumbnail = expand_zip_image_upload(new_thumbnail)[0]
+        validate_vehicle_image_uploads(
+            new_files,
+            thumbnail=new_thumbnail,
+            image_field="new_images",
+        )
         bill_of_sale_document = request.files.get("billOfSaleDocument")
         title_document = request.files.get("titleDocument")
         bill_of_lading_document = request.files.get("billOfLadingDocument")
@@ -489,6 +685,19 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
                 "staged vehicle media objects after rollback",
             )
         return error_response(message=str(e), code=409)
+    except (VehicleUploadError, UnidentifiedImageError) as e:
+        current_app.logger.warning(
+            "Invalid vehicle edit upload vehicle_id=%s error=%s",
+            vehicle_id,
+            e,
+        )
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=f"Invalid vehicle upload: {e}", code=400)
     except (TypeError, ValueError) as e:
         db.session.rollback()
         if not transaction_committed:
@@ -610,8 +819,11 @@ def admin_create_vehicle(sub):
             "color": color,
         }
 
-        images = request.files.getlist("images")
+        images = expand_image_uploads(request.files.getlist("images"))
         thumbnail = request.files.get("thumbnail")
+        if thumbnail and is_zip_upload(thumbnail):
+            thumbnail = expand_zip_image_upload(thumbnail)[0]
+        validate_vehicle_image_uploads(images, thumbnail=thumbnail)
         videos = request.files.getlist("videos")
 
         bill_of_sale_document = request.files.get("billOfSaleDocument")
@@ -655,7 +867,7 @@ def admin_create_vehicle(sub):
                 new_vehicle, image, index, s3_transaction=s3_transaction
             )
 
-        thumbnail_source = thumbnail or (images[0] if images else None)
+        thumbnail_source = normalize_thumbnail_upload(thumbnail, images)
         if thumbnail_source:
             replace_vehicle_main_thumbnails(
                 new_vehicle,
@@ -706,6 +918,19 @@ def admin_create_vehicle(sub):
                 "staged vehicle media objects after rollback",
             )
         return error_response(message=str(e), code=409)
+    except (VehicleUploadError, UnidentifiedImageError) as e:
+        current_app.logger.warning(
+            "Invalid vehicle create upload sub=%s error=%s",
+            sub,
+            e,
+        )
+        db.session.rollback()
+        if not transaction_committed:
+            cleanup_s3_keys(
+                s3_transaction.uploaded_keys,
+                "staged vehicle media objects after rollback",
+            )
+        return error_response(message=f"Invalid vehicle upload: {e}", code=400)
     except (TypeError, ValueError) as e:
         db.session.rollback()
         if not transaction_committed:

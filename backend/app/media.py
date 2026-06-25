@@ -5,7 +5,7 @@ from io import BytesIO
 from urllib.parse import unquote, urlparse
 from uuid import uuid4
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
 from app.cognito import s3_client
@@ -23,6 +23,10 @@ DOCUMENT_FIELDS = {
     "bill_of_lading_document": "vehicleBillOfLadingDocument",
     "swb_release_document": "vehicleSWBReleaseDocument",
 }
+
+
+def image_validation_error(filename):
+    return ValueError(f"Invalid image file: {safe_upload_filename(filename)}")
 
 
 @dataclass(frozen=True)
@@ -176,6 +180,16 @@ def _source_image_dimensions(fileobj):
     return image.size[0], image.size[1]
 
 
+def validate_image_upload(fileobj):
+    """Decode an uploaded image without mutating durable state."""
+    filename = getattr(fileobj, "filename", "image")
+    try:
+        image = _open_image(fileobj)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise image_validation_error(filename) from exc
+    return image.size[0], image.size[1]
+
+
 def create_vehicle_image(vehicle, fileobj, sort_order, s3_transaction=None):
     uploaded_keys = []
     original_filename = safe_upload_filename(fileobj.filename)
@@ -193,7 +207,11 @@ def create_vehicle_image(vehicle, fileobj, sort_order, s3_transaction=None):
         f"{vehicle.cognito_sub}/{vehicle.id}/images/"
         f"{vehicle_image.id}/original{ext}"
     )
-    original_width, original_height = _source_image_dimensions(source_bytes)
+    try:
+        original_width, original_height = _source_image_dimensions(source_bytes)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise image_validation_error(original_filename) from exc
+
     try:
         upload_bytes(
             fileobj.filename,
@@ -333,20 +351,23 @@ def replace_vehicle_main_thumbnails(vehicle, fileobj, s3_transaction=None):
     base = f"{vehicle.cognito_sub}/{vehicle.id}/thumbnail/{replacement_id}"
     desktop_key = f"{base}/thumbnail.webp"
     mobile_key = f"{base}/thumbnail_mobile.webp"
+    original_filename = safe_upload_filename(fileobj.filename)
 
     # Render both variants before touching S3. A corrupt image therefore cannot
     # leave even a partial replacement upload behind.
     source_bytes = file_bytes(fileobj)
-    desktop_buffer, _width, _height, _size = _webp_variant_buffer(
-        source_bytes,
-        (350, 350),
-    )
-    mobile_buffer, _width, _height, _size = _webp_variant_buffer(
-        source_bytes,
-        (1080, 1080),
-    )
+    try:
+        desktop_buffer, _width, _height, _size = _webp_variant_buffer(
+            source_bytes,
+            (350, 350),
+        )
+        mobile_buffer, _width, _height, _size = _webp_variant_buffer(
+            source_bytes,
+            (1080, 1080),
+        )
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError(f"Invalid thumbnail image file: {original_filename}") from exc
 
-    original_filename = safe_upload_filename(fileobj.filename)
     uploaded_keys = []
     try:
         upload_fileobj(

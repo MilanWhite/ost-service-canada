@@ -33,6 +33,7 @@ export interface CreateVehicleInfo {
 
 export interface CreateVehicleMedia {
     images: File[];
+    imageOrder: string[];
     thumbnail: File | null;
     videos: File[];
     billOfSaleDocument: File | null;
@@ -74,6 +75,9 @@ const useCreateVehicleForm = (user: User) => {
             formData.append("eta", createVehicleInfo.eta);
 
             createVehicleMedia.images.forEach((file) => formData.append("images", file, file.name))
+            createVehicleMedia.imageOrder.forEach((name) =>
+                formData.append("image_order[]", name)
+            );
             if (createVehicleMedia.thumbnail) {
                 formData.append("thumbnail", createVehicleMedia.thumbnail, createVehicleMedia.thumbnail.name)
             }

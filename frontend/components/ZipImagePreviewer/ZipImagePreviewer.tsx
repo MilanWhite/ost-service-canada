@@ -27,6 +27,7 @@ interface DragState {
 interface Props {
     files: File[];
     setFiles: Dispatch<SetStateAction<File[]>>;
+    setUploadFiles?: Dispatch<SetStateAction<File[]>>;
     thumbnail: File | null;
     setThumbnail: Dispatch<SetStateAction<File | null>>;
     disableThumbnailSelection?: boolean;
@@ -36,6 +37,10 @@ interface Props {
 
     preferredThumbnailName?: string;
 }
+
+type PreviewFile = File & {
+    sourceArchiveName?: string;
+};
 
 const IMAGE_EXTENSION = /\.(png|jpe?g|jfif|gif|webp|bmp|svg|heic|heif|avif)$/i;
 const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|ogv|avi|mkv|wmv)$/i;
@@ -111,6 +116,7 @@ const reorderArray = <T,>(items: T[], from: number, to: number) => {
 export default function ZipImagePreviewer({
     files,
     setFiles,
+    setUploadFiles,
     thumbnail,
     setThumbnail,
     disableThumbnailSelection = false,
@@ -159,10 +165,12 @@ export default function ZipImagePreviewer({
             )
         );
         const incomingImages: File[] = [];
+        const incomingUploadFiles: File[] = [];
         const incomingVideos: File[] = [];
 
         for (const picked of pickedFiles) {
             if (ZIP_EXTENSION.test(picked.name)) {
+                let hasImages = false;
                 try {
                     const buf = await picked.arrayBuffer();
                     const zip = await JSZip.loadAsync(buf);
@@ -184,9 +192,11 @@ export default function ZipImagePreviewer({
                         const file = new File([blob], uniqueName, {
                             type: getMimeType(rawName, blob.type),
                             lastModified: entry.date?.getTime() ?? Date.now(),
-                        });
+                        }) as PreviewFile;
 
                         if (kind === "image") {
+                            file.sourceArchiveName = picked.name;
+                            hasImages = true;
                             incomingImages.push(file);
                         } else {
                             incomingVideos.push(file);
@@ -196,6 +206,9 @@ export default function ZipImagePreviewer({
                     continue;
                 }
 
+                if (hasImages) {
+                    incomingUploadFiles.push(picked);
+                }
                 continue;
             }
 
@@ -210,6 +223,7 @@ export default function ZipImagePreviewer({
 
             if (kind === "image") {
                 incomingImages.push(file);
+                incomingUploadFiles.push(file);
             } else {
                 incomingVideos.push(file);
             }
@@ -217,6 +231,10 @@ export default function ZipImagePreviewer({
 
         if (incomingImages.length > 0) {
             setFiles((prev) => [...prev, ...incomingImages]);
+        }
+
+        if (incomingUploadFiles.length > 0 && setUploadFiles) {
+            setUploadFiles((prev) => [...prev, ...incomingUploadFiles]);
         }
 
         if (incomingVideos.length > 0 && setVideos) {
@@ -275,6 +293,8 @@ export default function ZipImagePreviewer({
 
     const removeFile = (item: MediaItem) => {
         if (item.kind === "image") {
+            const previewFile = item.file as PreviewFile;
+            const sourceArchiveName = previewFile.sourceArchiveName;
             setFiles((prev) => {
                 const next = prev.filter(
                     (x) => getFileKey(x) !== getFileKey(item.file)
@@ -287,6 +307,23 @@ export default function ZipImagePreviewer({
                 }
                 return next;
             });
+            if (!sourceArchiveName) {
+                setUploadFiles?.((prev) =>
+                    prev.filter((x) => getFileKey(x) !== getFileKey(item.file))
+                );
+            } else {
+                const archiveStillHasPreviewImages = files.some(
+                    (file) =>
+                        getFileKey(file) !== getFileKey(item.file) &&
+                        (file as PreviewFile).sourceArchiveName ===
+                            sourceArchiveName
+                );
+                if (!archiveStillHasPreviewImages) {
+                    setUploadFiles?.((prev) =>
+                        prev.filter((file) => file.name !== sourceArchiveName)
+                    );
+                }
+            }
         } else {
             setVideos?.((prev) =>
                 prev.filter((x) => getFileKey(x) !== getFileKey(item.file))

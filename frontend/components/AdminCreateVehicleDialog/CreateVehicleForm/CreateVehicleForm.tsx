@@ -127,6 +127,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
     const { closeCreateVehicle } = useCreateVehicle();
 
     const [files, setFiles] = useState<File[]>([]);
+    const [uploadFiles, setUploadFiles] = useState<File[]>([]);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
 
     const [videos, setVideos] = useState<File[]>([]);
@@ -174,7 +175,8 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
         };
 
         const createVehicleMedia: CreateVehicleMedia = {
-            images: files,
+            images: uploadFiles.length > 0 ? uploadFiles : files,
+            imageOrder: files.map((file) => file.name),
             thumbnail: thumbnail,
             videos: videos,
             ...documentFiles,
@@ -324,6 +326,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                             <ZipImagePreview
                                 files={files}
                                 setFiles={setFiles}
+                                setUploadFiles={setUploadFiles}
                                 thumbnail={thumbnail}
                                 setThumbnail={setThumbnail}
                                 videos={videos}

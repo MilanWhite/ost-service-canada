@@ -273,6 +273,25 @@ def expand_image_uploads(files):
     return expanded
 
 
+def order_image_uploads(files, ordered_names):
+    if not ordered_names:
+        return files
+
+    by_filename = {}
+    for file in files:
+        filename = safe_upload_filename(getattr(file, "filename", "image"))
+        by_filename.setdefault(filename, []).append(file)
+
+    ordered_files = []
+    for name in ordered_names:
+        filename = safe_upload_filename(name)
+        candidates = by_filename.get(filename)
+        if candidates:
+            ordered_files.append(candidates.pop(0))
+
+    return ordered_files
+
+
 def normalize_thumbnail_upload(thumbnail, images):
     if thumbnail and is_zip_upload(thumbnail):
         return expand_zip_image_upload(thumbnail)[0]
@@ -564,10 +583,13 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
         if not isinstance(payload, dict):
             return error_response(message="Vehicle edit payload must be an object", code=400)
 
-        new_files = expand_image_uploads(request.files.getlist("new_images"))
         delete_keys = request.form.getlist("delete_keys[]")
 
         new_image_order = request.form.getlist("image_order[]")
+        new_files = order_image_uploads(
+            expand_image_uploads(request.files.getlist("new_images")),
+            new_image_order,
+        )
         delete_document_types = set(request.form.getlist("delete_document_types[]"))
 
         new_thumbnail = request.files.get("new_thumbnail")
@@ -819,7 +841,11 @@ def admin_create_vehicle(sub):
             "color": color,
         }
 
-        images = expand_image_uploads(request.files.getlist("images"))
+        requested_image_order = request.form.getlist("image_order[]")
+        images = order_image_uploads(
+            expand_image_uploads(request.files.getlist("images")),
+            requested_image_order,
+        )
         thumbnail = request.files.get("thumbnail")
         if thumbnail and is_zip_upload(thumbnail):
             thumbnail = expand_zip_image_upload(thumbnail)[0]

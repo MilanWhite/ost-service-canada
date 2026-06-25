@@ -58,6 +58,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     } = useEditVehicle(initial, true);
 
     const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [uploadImageFiles, setUploadImageFiles] = useState<File[]>([]);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [documentFiles, setDocumentFiles] = useState({
         billOfSaleDocument: null as File | null,
@@ -89,7 +90,10 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
 
         (async () => {
             if (existingImageItems.length === 0) {
-                if (!cancelled) setImageFiles([]);
+                if (!cancelled) {
+                    setImageFiles([]);
+                    setUploadImageFiles([]);
+                }
                 return;
             }
 
@@ -110,6 +114,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
 
             if (!cancelled) {
                 setImageFiles(files);
+                setUploadImageFiles([]);
             }
         })();
 
@@ -149,7 +154,8 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
 
         try {
             await saveChanges({
-                newImages: toAdd,
+                newImages:
+                    uploadImageFiles.length > 0 ? uploadImageFiles : toAdd,
                 deleteKeys: toDelete,
                 newThumbnail: thumbnail,
                 imageOrder: imageFiles.map((imageFile) => imageFile.name),
@@ -600,6 +606,9 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                         <ZipImagePreviewer
                                             files={imageFiles}
                                             setFiles={setImageFiles}
+                                            setUploadFiles={
+                                                setUploadImageFiles
+                                            }
                                             thumbnail={thumbnail}
                                             setThumbnail={setThumbnail}
                                             preferredThumbnailName={

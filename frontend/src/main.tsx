@@ -37,9 +37,9 @@ import { AdminRoute } from "../routers/AdminRoute.tsx";
 import "./index.css";
 
 import { URLS } from "./config/navigation.ts";
-import { FEATURE_FLAGS } from "./config/featureFlags.ts";
 
 import { abortAllRequests } from "../services/api-client.ts";
+import { useAdminDashboardVisibility } from "../hooks/useAdminDashboardVisibility.ts";
 
 import "./i18.ts";
 
@@ -75,6 +75,16 @@ function AutoSnowfall() {
             />
         </>
     );
+}
+
+function AdminHomeRoute() {
+    const { isAdminDashboardVisible } = useAdminDashboardVisibility();
+
+    if (!isAdminDashboardVisible) {
+        return <Navigate to={URLS.adminClientManager} replace />;
+    }
+
+    return <AdminDashboard />;
 }
 
 const router = createBrowserRouter([
@@ -173,14 +183,7 @@ const router = createBrowserRouter([
                 path: URLS.adminHome,
                 element: (
                     <AdminRoute>
-                        {FEATURE_FLAGS.hideAdminDashboard ? (
-                            <Navigate
-                                to={URLS.adminClientManager}
-                                replace
-                            />
-                        ) : (
-                            <AdminDashboard />
-                        )}
+                        <AdminHomeRoute />
                     </AdminRoute>
                 ),
             },

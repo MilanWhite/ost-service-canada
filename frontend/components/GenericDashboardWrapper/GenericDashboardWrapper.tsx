@@ -32,6 +32,7 @@ interface Props {
     homeURL: string;
     dashboardNavigation: DashboardNavigation[];
     dashboardUserNavigation: DashboardUserNavigation[];
+    sidebarFooter?: ReactNode;
 }
 
 const GenericDashboardWrapper = ({
@@ -40,6 +41,7 @@ const GenericDashboardWrapper = ({
 
     dashboardNavigation,
     dashboardUserNavigation,
+    sidebarFooter,
 }: Props) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -50,6 +52,7 @@ const GenericDashboardWrapper = ({
                 <MobileSidebar
                     homeURL={homeURL}
                     dashboardNavigation={dashboardNavigation}
+                    sidebarFooter={sidebarFooter}
                     sidebarOpen={sidebarOpen}
                     setSidebarOpen={setSidebarOpen}
                 />
@@ -57,6 +60,7 @@ const GenericDashboardWrapper = ({
                 <DesktopSidebar
                     homeURL={homeURL}
                     dashboardNavigation={dashboardNavigation}
+                    sidebarFooter={sidebarFooter}
                 />
 
                 <div className="lg:pl-72">

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { DashboardNavigation } from "../GenericDashboardWrapper";
 import Logo from "../../Logo";
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -15,6 +15,7 @@ import SidebarChildLinks from "../SidebarChildLinks";
 interface Props {
     dashboardNavigation: DashboardNavigation[];
     homeURL: string;
+    sidebarFooter?: ReactNode;
     sidebarOpen: boolean;
     setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -26,6 +27,7 @@ function classNames(...classes: Array<string | false | null | undefined>) {
 const MobileSidebar = ({
     dashboardNavigation,
     homeURL,
+    sidebarFooter,
     sidebarOpen,
     setSidebarOpen,
 }: Props) => {
@@ -123,18 +125,11 @@ const MobileSidebar = ({
                                             ))}
                                         </ul>
                                     </li>
-                                    {/* <li className="mt-auto">
-                                        <a
-                                            href="#"
-                                            className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary"
-                                        >
-                                            <Cog6ToothIcon
-                                                aria-hidden="true"
-                                                className="size-6 shrink-0 text-gray-400 group-hover:text-primary-hover"
-                                            />
-                                            Settings
-                                        </a>
-                                    </li> */}
+                                    {sidebarFooter && (
+                                        <li className="mt-auto">
+                                            {sidebarFooter}
+                                        </li>
+                                    )}
                                 </ul>
                             </nav>
                         </div>

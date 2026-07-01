@@ -3,18 +3,24 @@ import Logo from "../../Logo";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import SidebarChildLinks from "../SidebarChildLinks";
+import { ReactNode } from "react";
 
 
 interface Props {
     dashboardNavigation: DashboardNavigation[];
     homeURL: string;
+    sidebarFooter?: ReactNode;
 }
 
 function classNames(...classes: Array<string | false | null | undefined>) {
     return classes.filter(Boolean).join(" ");
 }
 
-const DesktopSidebar = ({ dashboardNavigation, homeURL }: Props) => {
+const DesktopSidebar = ({
+    dashboardNavigation,
+    homeURL,
+    sidebarFooter,
+}: Props) => {
 
     const {t} = useTranslation()
 
@@ -68,7 +74,9 @@ const DesktopSidebar = ({ dashboardNavigation, homeURL }: Props) => {
                                 </ul>
                             </li>
 
-
+                            {sidebarFooter && (
+                                <li className="mt-auto">{sidebarFooter}</li>
+                            )}
                         </ul>
                     </nav>
                 </div>

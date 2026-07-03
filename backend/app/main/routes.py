@@ -1,10 +1,13 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, send_file
 from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
 from app.media import (
     attach_vehicle_media,
+    build_vehicle_images_zip,
     build_vehicle_response,
+    VehicleImageArchiveError,
+    vehicle_images_zip_filename,
     vehicle_media_rows_by_vehicle_id,
 )
 from app.utils import success_response, error_response, check_sub
@@ -171,6 +174,40 @@ def main_get_specific_vehicle(sub,vehicle_id):
     except Exception as e:
         print(f"[main_get_user_vehicles] {e}")
         return error_response(message=str(e), code=500)
+
+
+@main_bp.route("/<string:sub>/vehicles/<string:vehicle_id>/images.zip", methods=["GET"])
+@time_api_call("vehicle_images_zip")
+@cognito_auth_required(["Admin", "RegularUser"])
+def main_download_vehicle_images_zip(sub, vehicle_id):
+    try:
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
+
+        vehicle = (
+            Vehicle.query
+            .filter_by(id=vehicle_id, cognito_sub=sub)
+            .first()
+        )
+        if not vehicle:
+            return error_response("Vehicle not found", 404)
+
+        archive = build_vehicle_images_zip(vehicle)
+        return send_file(
+            archive,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=vehicle_images_zip_filename(vehicle),
+            max_age=0,
+        )
+    except VehicleImageArchiveError as e:
+        status_code = 404 if "No images" in str(e) else 502
+        details = {"filename": e.filename} if e.filename else None
+        return error_response(str(e), status_code, details=details)
+    except Exception as e:
+        print(f"[vehicle_images_zip] {e}")
+        return error_response("Could not prepare the vehicle images download.", 500)
 
 # user dashboard
 @main_bp.route("/dashboard", methods=["GET"])

@@ -217,6 +217,8 @@ const UserVehiclePage = ({ vehicle }: Props) => {
                                 <DownloadImagesButton
                                     images={photoImages}
                                     vehicleName={vehicle.vehicle_name}
+                                    userSub={vehicle.cognito_sub}
+                                    vehicleId={vehicle.id}
                                 />
                             </div>
                             <div className="mt-4 border-t border-gray-200 pt-4">

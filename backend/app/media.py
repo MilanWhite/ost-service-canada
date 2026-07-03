@@ -2,8 +2,11 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
+from shutil import copyfileobj
+from tempfile import SpooledTemporaryFile
 from urllib.parse import unquote, urlparse
 from uuid import uuid4
+from zipfile import ZIP_STORED, ZipFile
 
 from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
@@ -23,6 +26,8 @@ DOCUMENT_FIELDS = {
     "bill_of_lading_document": "vehicleBillOfLadingDocument",
     "swb_release_document": "vehicleSWBReleaseDocument",
 }
+
+ZIP_SPOOL_MAX_BYTES = 32 * 1024 * 1024
 
 
 def image_validation_error(filename):
@@ -59,6 +64,84 @@ def safe_upload_filename(filename):
     basename = os.path.basename((filename or "").replace("\\", "/"))
     safe_name = secure_filename(basename)
     return safe_name or "file"
+
+
+def unique_archive_filename(filename, used_filenames):
+    safe_name = safe_upload_filename(filename)
+    stem, ext = os.path.splitext(safe_name)
+    stem = stem or "image"
+    candidate = safe_name
+    duplicate_index = 2
+
+    while candidate in used_filenames:
+        candidate = f"{stem}-{duplicate_index}{ext}"
+        duplicate_index += 1
+
+    used_filenames.add(candidate)
+    return candidate
+
+
+def vehicle_images_zip_filename(vehicle):
+    base_name = safe_upload_filename(
+        vehicle.vehicle_name or vehicle.vin or f"vehicle-{vehicle.id}"
+    )
+    stem = os.path.splitext(base_name)[0] or f"vehicle-{vehicle.id}"
+    return f"{stem}-images.zip"
+
+
+class VehicleImageArchiveError(RuntimeError):
+    def __init__(self, message, filename=None):
+        super().__init__(message)
+        self.filename = filename
+
+
+def build_vehicle_images_zip(vehicle):
+    image_rows = sorted(vehicle.images, key=lambda item: (item.sort_order, item.id))
+    originals = []
+
+    for image in image_rows:
+        original = next(
+            (variant for variant in image.variants if variant.variant == "original"),
+            None,
+        )
+        if original:
+            originals.append((image.original_filename, original.s3_key))
+
+    if not originals:
+        raise VehicleImageArchiveError("No images are available to download.")
+
+    archive = SpooledTemporaryFile(max_size=ZIP_SPOOL_MAX_BYTES, mode="w+b")
+
+    try:
+        used_filenames = set()
+        with ZipFile(archive, "w", compression=ZIP_STORED) as zip_file:
+            for original_filename, s3_key in originals:
+                try:
+                    response = s3_client.get_object(
+                        Bucket=Config.S3_BUCKET,
+                        Key=s3_key,
+                    )
+                    body = response["Body"]
+                except Exception as exc:
+                    raise VehicleImageArchiveError(
+                        "Could not read one of the images from storage.",
+                        filename=original_filename,
+                    ) from exc
+
+                try:
+                    with zip_file.open(
+                        unique_archive_filename(original_filename, used_filenames),
+                        "w",
+                    ) as zip_entry:
+                        copyfileobj(body, zip_entry)
+                finally:
+                    body.close()
+
+        archive.seek(0)
+        return archive
+    except Exception:
+        archive.close()
+        raise
 
 
 def presign_key(s3_key):

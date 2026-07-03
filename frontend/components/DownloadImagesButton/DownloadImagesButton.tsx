@@ -3,9 +3,13 @@ import JSZip from "jszip";
 import { ArrowDownTrayIcon } from "@heroicons/react/20/solid";
 import { useTranslation } from "react-i18next";
 
+import apiClient from "../../services/api-client";
+
 interface Props {
     images: string[];
     vehicleName: string;
+    userSub: string;
+    vehicleId: string | number;
 }
 
 const getFilenameFromUrl = (url: string, index: number, contentType: string) => {
@@ -40,7 +44,24 @@ const getZipFilename = (vehicleName: string) => {
     return `${safeName || fallback}-images.zip`;
 };
 
-const DownloadImagesButton = ({ images, vehicleName }: Props) => {
+const triggerBlobDownload = (blob: Blob, filename: string) => {
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+};
+
+const DownloadImagesButton = ({
+    images,
+    vehicleName,
+    userSub,
+    vehicleId,
+}: Props) => {
     const { t } = useTranslation();
     const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -82,22 +103,27 @@ const DownloadImagesButton = ({ images, vehicleName }: Props) => {
                 zip.file(filename, blob);
             }
 
-            const zipBlob = await zip.generateAsync({ type: "blob" });
-            const downloadUrl = URL.createObjectURL(zipBlob);
-            const link = document.createElement("a");
-
-            link.href = downloadUrl;
-            link.download = getZipFilename(vehicleName);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(downloadUrl);
-        } catch {
-            setError(
-                t("AuthenticatedView.Errors.failed_to_download_images", {
-                    defaultValue: "Failed to download images",
-                })
+            triggerBlobDownload(
+                await zip.generateAsync({ type: "blob" }),
+                getZipFilename(vehicleName)
             );
+        } catch {
+            try {
+                const response = await apiClient.get<Blob>(
+                    `/api/main/${encodeURIComponent(userSub)}/vehicles/${encodeURIComponent(
+                        String(vehicleId)
+                    )}/images.zip`,
+                    { responseType: "blob", timeout: 0 }
+                );
+
+                triggerBlobDownload(response.data, getZipFilename(vehicleName));
+            } catch {
+                setError(
+                    t("AuthenticatedView.Errors.failed_to_download_images", {
+                        defaultValue: "Failed to download images",
+                    })
+                );
+            }
         } finally {
             setIsDownloading(false);
         }

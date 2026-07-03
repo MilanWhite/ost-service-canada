@@ -45,3 +45,7 @@ frontend/src/amplifyconfiguration.json
 /scripts
 
 /migrate-db
+
+run-full-test-suite.ps1
+
+backend/tests

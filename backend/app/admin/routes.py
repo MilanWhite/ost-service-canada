@@ -569,6 +569,33 @@ def admin_get_specific_user(sub):
         print(str(e))
         return error_response(message=str(e), code=500)
 
+
+@admin_bp.route("/vehicles/search-by-vin", methods=["GET"])
+@cognito_auth_required(["Admin"])
+def admin_search_vehicle_by_vin():
+    try:
+        vin = normalize_vin(request.args.get("vin"))
+    except (TypeError, ValueError) as e:
+        return error_response(message=str(e), code=400)
+
+    try:
+        vehicle = Vehicle.query.filter_by(vin=vin).first()
+        if vehicle is None:
+            return error_response(message="Vehicle not found", code=404)
+
+        return success_response({
+            "vehicle": {
+                "id": vehicle.id,
+                "cognito_sub": vehicle.cognito_sub,
+                "vin": vehicle.vin,
+            }
+        })
+
+    except Exception as e:
+        print(str(e))
+        return error_response(message=str(e), code=500)
+
+
 @admin_bp.route("/vehicles/edit/<int:vehicle_id>/<int:on_singular_vehicle_page>", methods=["PUT"])
 @cognito_auth_required(["Admin"])
 def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):

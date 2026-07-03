@@ -4,23 +4,31 @@ import { useCreateUser } from "../../contexts/CreateUserContext";
 import SuccessBanner from "../SuccessBanner";
 import { useGetAllUsers } from "../../hooks/useGetAllUsers";
 import ErrorBanner from "../ErrorBanner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { URLS } from "../../src/config/navigation";
 import { getAvatarSrc } from "../../src/config/AvatarConfig";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import type { FormEvent } from "react";
 import apiClient from "../../services/api-client";
 import { User } from "../../hooks/interfaces";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 
 import UsersTableSkeleton from "../Skeletons/UsersTableSkeleton";
 import ResendInviteDialog from "../ResendInviteDialog";
 
+const vinPattern = /^[A-HJ-NPR-Z0-9]{17}$/;
+
 const AdminClientList = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [resendingSub, setResendingSub] = useState<string | null>(null);
     const [resendSuccess, setResendSuccess] = useState(false);
     const [resendError, setResendError] = useState<string | null>(null);
     const [resendUser, setResendUser] = useState<User | null>(null);
+    const [vinSearch, setVinSearch] = useState("");
+    const [vinSearchError, setVinSearchError] = useState<string | null>(null);
+    const [vinSearchLoading, setVinSearchLoading] = useState(false);
 
     const { openCreateUser, showCreateUserSuccess, setShowCreateUserSuccess } =
         useCreateUser();
@@ -47,12 +55,60 @@ const AdminClientList = () => {
         }
     };
 
+    const searchByVin = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        const normalizedVin = vinSearch.trim().toUpperCase();
+        setVinSearch(normalizedVin);
+
+        if (!vinPattern.test(normalizedVin)) {
+            setVinSearchError("AuthenticatedView.Errors.invalid_vin");
+            return;
+        }
+
+        setVinSearchLoading(true);
+        setVinSearchError(null);
+        try {
+            const response = await apiClient.get<{
+                message: {
+                    vehicle: {
+                        id: number;
+                        cognito_sub: string;
+                    };
+                };
+            }>("/api/admin/vehicles/search-by-vin", {
+                params: { vin: normalizedVin },
+            });
+
+            const { vehicle } = response.data.message;
+            navigate(
+                URLS.adminViewClientSingularVehicle(
+                    vehicle.cognito_sub,
+                    String(vehicle.id)
+                )
+            );
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } }).response
+                ?.status;
+            setVinSearchError(
+                status === 404
+                    ? "AuthenticatedView.Errors.vehicle_vin_not_found"
+                    : "AuthenticatedView.Errors.failed_to_load_vehicle"
+            );
+        } finally {
+            setVinSearchLoading(false);
+        }
+    };
+
     return (
         <>
             {getAllUsersError && (
                 <ErrorBanner>{t(getAllUsersError as string)}</ErrorBanner>
             )}
             {resendError && <ErrorBanner>{t(resendError)}</ErrorBanner>}
+            {vinSearchError && (
+                <ErrorBanner>{t(vinSearchError)}</ErrorBanner>
+            )}
             {showCreateUserSuccess && (
                 <SuccessBanner
                     onClick={() => {
@@ -96,7 +152,51 @@ const AdminClientList = () => {
                                 )}
                             </p>
                         </div>
-                        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+                        <div className="mt-4 flex flex-col gap-3 sm:mt-0 sm:ml-16 sm:flex-none sm:flex-row sm:items-end">
+                            <form
+                                className="w-full sm:w-50"
+                                onSubmit={searchByVin}
+                            >
+                                <div className="mt-2">
+                                    <div className="flex rounded-md bg-white outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary">
+                                        <input
+                                            id="global-vin-search"
+                                            name="global-vin-search"
+                                            type="text"
+                                            value={vinSearch}
+                                            aria-label={t(
+                                                "AuthenticatedView.vin"
+                                            )}
+                                            placeholder={t(
+                                                "AuthenticatedView.vin"
+                                            )}
+                                            autoComplete="off"
+                                            maxLength={17}
+                                            className="block min-w-0 w-full grow px-3 py-1.5 text-base text-gray-900 uppercase placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
+                                            onChange={(event) => {
+                                                setVinSearch(
+                                                    event.currentTarget.value.toUpperCase()
+                                                );
+                                                setVinSearchError(null);
+                                            }}
+                                        />
+                                        <div className="flex py-1.5 pr-1.5">
+                                            <button
+                                                type="submit"
+                                                disabled={vinSearchLoading}
+                                                className="disabled:cursor-not-allowed"
+                                            >
+                                                <span className="sr-only">
+                                                    {t(
+                                                        "AuthenticatedView.search"
+                                                    )}
+                                                </span>
+                                                <MagnifyingGlassIcon className="cursor-pointer w-4.5 text-gray-500 hover:text-gray-400" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                             <ActionButton onClick={openCreateUser}>
                                 {t("AuthenticatedView.invite_user")}
                             </ActionButton>

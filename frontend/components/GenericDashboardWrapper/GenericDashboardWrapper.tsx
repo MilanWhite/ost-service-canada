@@ -1,8 +1,10 @@
 import React, { ReactNode, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import DesktopSidebar from "./DesktopSidebar";
 import MobileSidebar from "./MobileSidebar";
 import DashboardNavbar from "./DashboardNavbar";
+import { URLS } from "../../src/config/navigation";
 
 export interface DashboardNavigation {
     name: string;
@@ -44,6 +46,11 @@ const GenericDashboardWrapper = ({
     sidebarFooter,
 }: Props) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { pathname } = useLocation();
+
+    const isVehiclePage =
+        pathname.startsWith(`${URLS.vehicles}/`) ||
+        /^\/admin\/clients\/[^/]+\/vehicles(\/|$)/.test(pathname);
 
     return (
         <>
@@ -63,13 +70,21 @@ const GenericDashboardWrapper = ({
                     sidebarFooter={sidebarFooter}
                 />
 
-                <div className="lg:pl-72">
+                <div className="lg:relative lg:pl-72">
                     <DashboardNavbar
                         dashboardUserNavigation={dashboardUserNavigation}
                         setSidebarOpen={setSidebarOpen}
                     />
-                    <main className="py-10">
-                        <div className="px-4 sm:px-6 lg:px-12">{children}</div>
+                    <main
+                        className={
+                            isVehiclePage
+                                ? "pt-6 pb-10"
+                                : "pt-6 pb-10 lg:pt-[5.5rem]"
+                        }
+                    >
+                        <div className="px-4 sm:px-6 lg:px-12">
+                            {children}
+                        </div>
                     </main>
                 </div>
             </div>

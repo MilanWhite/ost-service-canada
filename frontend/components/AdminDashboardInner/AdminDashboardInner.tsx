@@ -16,7 +16,9 @@ const AdminDashboardInner = () => {
     return (
         <>
             {adminDashboardError && (
-                <ErrorBanner>{t(adminDashboardError as string)}</ErrorBanner>
+                <ErrorBanner className="mt-0 mb-5">
+                    {t(adminDashboardError as string)}
+                </ErrorBanner>
             )}
 
             {adminDashboardData ? (

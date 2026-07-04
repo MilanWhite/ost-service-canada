@@ -42,7 +42,9 @@ const UserViewUserVehicles = () => {
     return (
         <>
             {vehiclesError && (
-                <ErrorBanner>{t(vehiclesError as string)}</ErrorBanner>
+                <ErrorBanner className="mt-0 mb-5">
+                    {t(vehiclesError as string)}
+                </ErrorBanner>
             )}
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end">

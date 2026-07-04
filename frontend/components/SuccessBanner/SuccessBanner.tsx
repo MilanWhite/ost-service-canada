@@ -5,11 +5,18 @@ import { CheckCircleIcon, XMarkIcon } from "@heroicons/react/20/solid";
 interface Props {
     children: ReactNode;
     onClick: MouseEventHandler<HTMLButtonElement>;
+    className?: string;
 }
 
-const SuccessBanner = ({ children, onClick }: Props) => {
+const SuccessBanner = ({
+    children,
+    onClick,
+    className = "mt-5 mb-4",
+}: Props) => {
     return (
-        <div className=" mb-10 p-4 rounded-md  bg-green-50">
+        <div
+            className={`dashboard-banner relative z-50 w-full rounded-md bg-green-50 p-4 ${className}`}
+        >
             <div className="flex">
                 <div className="shrink-0">
                     <CheckCircleIcon

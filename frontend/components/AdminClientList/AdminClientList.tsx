@@ -103,14 +103,23 @@ const AdminClientList = () => {
     return (
         <>
             {getAllUsersError && (
-                <ErrorBanner>{t(getAllUsersError as string)}</ErrorBanner>
+                <ErrorBanner className="mt-0 mb-5">
+                    {t(getAllUsersError as string)}
+                </ErrorBanner>
             )}
-            {resendError && <ErrorBanner>{t(resendError)}</ErrorBanner>}
+            {resendError && (
+                <ErrorBanner className="mt-0 mb-5">
+                    {t(resendError)}
+                </ErrorBanner>
+            )}
             {vinSearchError && (
-                <ErrorBanner>{t(vinSearchError)}</ErrorBanner>
+                <ErrorBanner className="mt-0 mb-5">
+                    {t(vinSearchError)}
+                </ErrorBanner>
             )}
             {showCreateUserSuccess && (
                 <SuccessBanner
+                    className="mt-0 mb-5"
                     onClick={() => {
                         setShowCreateUserSuccess(false);
                     }}
@@ -121,7 +130,10 @@ const AdminClientList = () => {
                 </SuccessBanner>
             )}
             {resendSuccess && (
-                <SuccessBanner onClick={() => setResendSuccess(false)}>
+                <SuccessBanner
+                    className="mt-0 mb-5"
+                    onClick={() => setResendSuccess(false)}
+                >
                     {t(
                         "AuthenticatedView.Success.user_invite_resent_successfully"
                     )}

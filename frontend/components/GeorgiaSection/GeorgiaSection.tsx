@@ -35,7 +35,7 @@ const GeorgiaSection = () => {
 
                     <div className="hidden w-full lg:block">
                         <img
-                            alt="Product screenshot"
+                            alt={t("HomePage.georgia_image_alt")}
                             src={TbilisiSkylineImage}
                             className="h-auto max-h-[300px] w-full rounded-xl object-cover shadow-xl ring-1 ring-gray-400/10"
                         />

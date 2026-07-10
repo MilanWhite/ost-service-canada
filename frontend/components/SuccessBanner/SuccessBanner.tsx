@@ -1,6 +1,7 @@
 import { MouseEventHandler, ReactNode } from "react";
 
 import { CheckCircleIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     children: ReactNode;
@@ -13,6 +14,8 @@ const SuccessBanner = ({
     onClick,
     className = "mt-5 mb-4",
 }: Props) => {
+    const { t } = useTranslation();
+
     return (
         <div
             className={`dashboard-banner relative z-50 w-full rounded-md bg-green-50 p-4 ${className}`}
@@ -36,7 +39,9 @@ const SuccessBanner = ({
                             className="inline-flex rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50 focus:outline-hidden"
                             onClick={onClick}
                         >
-                            <span className="sr-only">Dismiss</span>
+                            <span className="sr-only">
+                                {t("Common.dismiss")}
+                            </span>
                             <XMarkIcon aria-hidden="true" className="size-5" />
                         </button>
                     </div>

@@ -326,8 +326,11 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         <>
             {(editVehicleError || saveError || documentFileError) && (
                 <ErrorBanner>
-                    {documentFileError ??
-                        t((editVehicleError ?? saveError) as string)}
+                    {t(
+                        (documentFileError ??
+                            editVehicleError ??
+                            saveError) as string
+                    )}
                 </ErrorBanner>
             )}
 
@@ -467,7 +470,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                                                 )
                                                             }
                                                             className="inline-flex size-5 items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                                                            aria-label={`Remove ${document.label}`}
+                                                            aria-label={`${t("AuthenticatedView.remove")} ${document.label}`}
                                                         >
                                                             <XMarkIcon className="size-4" />
                                                         </button>
@@ -526,7 +529,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                                                     )
                                                                 ) {
                                                                     setDocumentFileError(
-                                                                        "Please choose a document file: PDF, Word, Excel, CSV, TXT, RTF, or ODT."
+                                                                        "AuthenticatedView.Errors.invalid_document_file"
                                                                     );
                                                                     event.target.value =
                                                                         "";
@@ -584,7 +587,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                                                     )
                                                                 }
                                                                 className="shrink-0 rounded-full text-red-600 hover:bg-red-100 hover:text-red-700"
-                                                                aria-label={`Remove ${document.label}`}
+                                                                aria-label={`${t("AuthenticatedView.remove")} ${document.label}`}
                                                             >
                                                                 <XMarkIcon className="size-4" />
                                                             </button>

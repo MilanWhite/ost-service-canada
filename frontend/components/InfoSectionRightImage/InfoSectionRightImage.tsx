@@ -24,7 +24,7 @@ const InfoSectionRightImage = () => {
                         </div>
                     </div>
                     <img
-                        alt="Product screenshot"
+                        alt={t("HomePage.auto_auctions_image_alt")}
                         src={LandingBannerImage}
                         width={2432}
                         height={1442}

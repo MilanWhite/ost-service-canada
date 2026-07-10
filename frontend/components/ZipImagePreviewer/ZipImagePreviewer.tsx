@@ -497,7 +497,7 @@ export default function ZipImagePreviewer({
                                             removeFile(item);
                                         }}
                                         className="absolute top-1 right-1 z-20 bg-white/80 backdrop-blur-sm rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-500 hover:text-white"
-                                        title="Remove"
+                                        title={t("AuthenticatedView.remove")}
                                     >
                                         <XMarkIcon className="w-3" />
                                     </button>

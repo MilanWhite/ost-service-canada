@@ -26,7 +26,7 @@ export default function MobileNavbar({ navigation, social_navigation }: Props) {
     return (
         <header className="bg-white">
             <nav
-                aria-label="Global"
+                aria-label={t("Common.global_navigation")}
                 className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8"
             >
                 <Logo height={40} to={URLS.root} />
@@ -37,7 +37,9 @@ export default function MobileNavbar({ navigation, social_navigation }: Props) {
                         onClick={() => setMobileMenuOpen(true)}
                         className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
                     >
-                        <span className="sr-only">Open main menu</span>
+                        <span className="sr-only">
+                            {t("Common.open_main_menu")}
+                        </span>
                         <Bars3Icon aria-hidden="true" className="size-6" />
                     </button>
                 </div>
@@ -59,7 +61,9 @@ export default function MobileNavbar({ navigation, social_navigation }: Props) {
                             onClick={() => setMobileMenuOpen(false)}
                             className="-m-2.5 rounded-md p-2.5 text-gray-700"
                         >
-                            <span className="sr-only">Close menu</span>
+                            <span className="sr-only">
+                                {t("Common.close_menu")}
+                            </span>
                             <XMarkIcon aria-hidden="true" className="size-6" />
                         </button>
                     </div>

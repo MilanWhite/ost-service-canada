@@ -3,8 +3,10 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { getAvatarSrc } from "../../../../src/config/AvatarConfig";
 
 import { useAuthenticator } from "@aws-amplify/ui-react";
+import { useTranslation } from "react-i18next";
 
 const NavbarIdentifier = () => {
+    const { t } = useTranslation();
 
     const { user } = useAuthenticator((ctx) => [ctx.user]);
 
@@ -12,7 +14,7 @@ const NavbarIdentifier = () => {
         <>
             {" "}
             <MenuButton className="-m-1.5 flex items-center p-1.5">
-                <span className="sr-only">Open user menu</span>
+                <span className="sr-only">{t("Common.open_user_menu")}</span>
                 <img
                     alt=""
                     src={getAvatarSrc(user.signInDetails?.loginId)}

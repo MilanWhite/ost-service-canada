@@ -71,7 +71,7 @@ const UserBanner = ({ user }: Props) => {
 
             <div className="bg-white">
                 <h2 id="profile-overview-title" className="sr-only">
-                    Profile Overview
+                    {t("AuthenticatedView.profile_overview")}
                 </h2>
 
                 <div className="py-4">

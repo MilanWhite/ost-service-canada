@@ -15,7 +15,7 @@ export default function TopNavbar({ social_navigation }: Props) {
     return (
         <header className="bg-white">
             <nav
-                aria-label="language"
+                aria-label={t("Common.language_navigation")}
                 className="mx-auto flex max-w-7xl items-center justify-between p-1 lg:px-8"
             >
                 <LanguageToggle />

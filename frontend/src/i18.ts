@@ -65,6 +65,7 @@ i18n.use(LanguageDetector)
                         georgia_text:
                             "OST Service Canada now has a dedicated office in Tbilisi, giving customers in Georgia a direct local point of contact for vehicle shipping, auction support, and day-to-day communication.",
                         georgia_visit_site: "Visit OST Service Georgia",
+                        georgia_image_alt: "Tbilisi skyline",
                         //  How-it-works section
                         how_it_works_heading: "How It Works",
                         how_it_works_subheading: "Step by step.",
@@ -92,10 +93,14 @@ i18n.use(LanguageDetector)
                         auto_auctions_title: "Auto Auctions",
                         auto_auctions_text:
                             "OST Services manages vehicle auctions, handling everything from bidding and paperwork to final logistics. Our efficient processes ensure a smooth and stress-free auction experience for every client.",
+                        auto_auctions_image_alt:
+                            "Vehicles lined up at an auto auction",
 
                         shipping_title: "Shipping",
                         shipping_text:
                             "We specialize in secure, efficient vehicle transportation solutions tailored to your individual needs. OST Services guarantees timely delivery and care, whether your shipment is local or international.",
+                        shipping_image_alt:
+                            "Vehicle shipping container being prepared",
 
                         //  Footer
                         footer_copyright:
@@ -110,12 +115,26 @@ i18n.use(LanguageDetector)
                             "Dismiss"
                     },
 
+                    Common: {
+                        dismiss: "Dismiss",
+                        remove: "Remove",
+                        open_sidebar: "Open sidebar",
+                        close_sidebar: "Close sidebar",
+                        open_user_menu: "Open user menu",
+                        open_main_menu: "Open main menu",
+                        close_menu: "Close menu",
+                        global_navigation: "Global navigation",
+                        language_navigation: "Language navigation",
+                        pagination: "Pagination",
+                    },
+
                     // CONTACT PAGE
                     ContactPage: {
                         //  Headline & blurb
                         contact_heading: "Contact Us",
                         contact_description:
                             "Get in touch with OST Services to discuss your vehicle shipping and auction needs. Complete our simple contact form, and we'll promptly respond to start assisting you today.",
+                        map_title: "Our location",
 
                         //  Address
                         address_label: "Address",
@@ -152,6 +171,13 @@ i18n.use(LanguageDetector)
                         //  Submission flash messages
                         message_submitted: "Message successfully submitted",
                         message_failed: "Failed to send message",
+                    },
+
+                    NotFoundPage: {
+                        title: "Page not found",
+                        description:
+                            "Sorry, we couldn't find the page you're looking for.",
+                        go_home: "Go back home",
                     },
 
                     // ABOUT PAGE
@@ -350,8 +376,10 @@ i18n.use(LanguageDetector)
                         downloading: "Downloading",
                         none: "None",
                         choose_file: "Choose file",
+                        remove: "Remove",
                         removed_on_save: "Removed on save",
                         undo_remove: "Undo remove",
+                        profile_overview: "Profile overview",
 
                         // Documents
                         documents: "Documents",
@@ -415,6 +443,8 @@ i18n.use(LanguageDetector)
                         Errors: {
                             username_required: "Username is required",
                             invalid_email_address: "Invalid email address",
+                            invalid_document_file:
+                                "Please choose a document file: PDF, Word, Excel, CSV, TXT, RTF, or ODT.",
                             failed_to_resend_invite:
                                 "Failed to resend invite email",
 
@@ -513,6 +543,7 @@ i18n.use(LanguageDetector)
                         georgia_text:
                             "У OST Service Canada теперь есть отдельный офис в Тбилиси, поэтому клиенты в Грузии имеют прямой местный контактный пункт по вопросам доставки автомобилей, поддержки на аукционах и повседневной коммуникации.",
                         georgia_visit_site: "Перейти на сайт OST Service Georgia",
+                        georgia_image_alt: "Панорама Тбилиси",
                         //  How-it-works section
                         how_it_works_heading: "Как это работает",
                         how_it_works_subheading: "Шаг за шагом.",
@@ -540,9 +571,13 @@ i18n.use(LanguageDetector)
                         auto_auctions_title: "Автоаукционы",
                         auto_auctions_text:
                             "OST Services организует участие в автоаукционах: от подачи ставок и оформления документов до логистики. Мы обеспечиваем комфортный и надёжный процесс покупки.",
+                        auto_auctions_image_alt:
+                            "Автомобили на автоаукционе",
                         shipping_title: "Доставка",
                         shipping_text:
                             "Мы специализируемся на безопасной и эффективной доставке автомобилей с учётом ваших индивидуальных потребностей. OST Services гарантирует своевременную и аккуратную доставку - как внутри страны, так и за рубеж.",
+                        shipping_image_alt:
+                            "Автомобильный контейнер готовится к отправке",
 
                         //  Footer
                         footer_copyright:
@@ -557,12 +592,26 @@ i18n.use(LanguageDetector)
                             "Закрыть"
                     },
 
+                    Common: {
+                        dismiss: "Закрыть",
+                        remove: "Удалить",
+                        open_sidebar: "Открыть боковую панель",
+                        close_sidebar: "Закрыть боковую панель",
+                        open_user_menu: "Открыть меню пользователя",
+                        open_main_menu: "Открыть главное меню",
+                        close_menu: "Закрыть меню",
+                        global_navigation: "Основная навигация",
+                        language_navigation: "Навигация по языкам",
+                        pagination: "Пагинация",
+                    },
+
                     // CONTACT PAGE
                     ContactPage: {
                         //  Headline & blurb
                         contact_heading: "Связаться с нами",
                         contact_description:
                             "Свяжитесь с OST Services, чтобы обсудить доставку и участие в аукционах. Заполните простую форму, и мы оперативно свяжемся с вами.",
+                        map_title: "Наше местоположение",
 
                         //  Address
                         address_label: "Адрес",
@@ -602,6 +651,13 @@ i18n.use(LanguageDetector)
                         //  Submission flash messages
                         message_submitted: "Сообщение успешно отправлено",
                         message_failed: "Не удалось отправить сообщение",
+                    },
+
+                    NotFoundPage: {
+                        title: "Страница не найдена",
+                        description:
+                            "К сожалению, мы не смогли найти страницу, которую вы ищете.",
+                        go_home: "Вернуться на главную",
                     },
 
                     // ABOUT PAGE
@@ -798,8 +854,10 @@ i18n.use(LanguageDetector)
                         downloading: "Скачивание",
                         none: "Нет",
                         choose_file: "Выбрать файл",
+                        remove: "Удалить",
                         removed_on_save: "Будет удалено при сохранении",
                         undo_remove: "Отменить удаление",
+                        profile_overview: "Обзор профиля",
 
                         // Documents
                         documents: "Документы",
@@ -864,6 +922,8 @@ i18n.use(LanguageDetector)
                             username_required: "Имя пользователя обязательно",
                             invalid_email_address:
                                 "Неверный адрес электронной почты",
+                            invalid_document_file:
+                                "Выберите документ: PDF, Word, Excel, CSV, TXT, RTF или ODT.",
                             failed_to_resend_invite:
                                 "Не удалось повторно отправить письмо-приглашение",
 
@@ -962,6 +1022,7 @@ i18n.use(LanguageDetector)
                         georgia_text:
                             "OST Service Canada тепер має окремий офіс у Тбілісі, що надає клієнтам у Грузії прямий місцевий контактний пункт для доставки автомобілів, супроводу на аукціонах і щоденної комунікації.",
                         georgia_visit_site: "Перейти на сайт OST Service Georgia",
+                        georgia_image_alt: "Панорама Тбілісі",
                         //  How-it-works section
                         how_it_works_heading: "Як це працює",
                         how_it_works_subheading: "Крок за кроком.",
@@ -989,10 +1050,14 @@ i18n.use(LanguageDetector)
                         auto_auctions_title: "Автоаукціони",
                         auto_auctions_text:
                             "OST Services керує процесом автоаукціонів: від ставок і документів до логістики. Ми забезпечуємо легкий і безпечний досвід для кожного клієнта.",
+                        auto_auctions_image_alt:
+                            "Автомобілі на автоаукціоні",
 
                         shipping_title: "Доставка",
                         shipping_text:
                             "Ми спеціалізуємось на безпечному та ефективному транспортуванні авто, адаптованому під ваші потреби. OST Services гарантує своєчасну доставку з дбайливим ставленням - в Україні та за кордоном.",
+                        shipping_image_alt:
+                            "Автомобільний контейнер готується до відправлення",
 
                         //  Footer
                         footer_copyright:
@@ -1007,12 +1072,26 @@ i18n.use(LanguageDetector)
                             "Закрити"
                     },
 
+                    Common: {
+                        dismiss: "Закрити",
+                        remove: "Видалити",
+                        open_sidebar: "Відкрити бічну панель",
+                        close_sidebar: "Закрити бічну панель",
+                        open_user_menu: "Відкрити меню користувача",
+                        open_main_menu: "Відкрити головне меню",
+                        close_menu: "Закрити меню",
+                        global_navigation: "Основна навігація",
+                        language_navigation: "Навігація мовами",
+                        pagination: "Пагінація",
+                    },
+
                     // CONTACT PAGE
                     ContactPage: {
                         //  Headline & blurb
                         contact_heading: "Зв'язатися з нами",
                         contact_description:
                             "Зв’яжіться з OST Services, щоб обговорити доставку авто або участь в аукціонах. Заповніть просту форму - і ми оперативно відповімо.",
+                        map_title: "Наше місцезнаходження",
 
                         //  Address
                         address_label: "Адреса",
@@ -1048,6 +1127,13 @@ i18n.use(LanguageDetector)
                         //  Submission flash messages
                         message_submitted: "Повідомлення успішно надіслано",
                         message_failed: "Не вдалося надіслати повідомлення",
+                    },
+
+                    NotFoundPage: {
+                        title: "Сторінку не знайдено",
+                        description:
+                            "На жаль, ми не змогли знайти сторінку, яку ви шукаєте.",
+                        go_home: "Повернутися на головну",
                     },
 
                     // ABOUT PAGE
@@ -1246,8 +1332,10 @@ i18n.use(LanguageDetector)
                         downloading: "Завантаження",
                         none: "Немає",
                         choose_file: "Вибрати файл",
+                        remove: "Видалити",
                         removed_on_save: "Буде видалено під час збереження",
                         undo_remove: "Скасувати видалення",
+                        profile_overview: "Огляд профілю",
 
                         // Documents
                         documents: "Документи",
@@ -1311,6 +1399,8 @@ i18n.use(LanguageDetector)
                             username_required:
                                 "Ім’я користувача є обов’язковим",
                             invalid_email_address: "Невірна електронна адреса",
+                            invalid_document_file:
+                                "Виберіть документ: PDF, Word, Excel, CSV, TXT, RTF або ODT.",
                             failed_to_resend_invite:
                                 "Не вдалося повторно надіслати лист-запрошення",
 

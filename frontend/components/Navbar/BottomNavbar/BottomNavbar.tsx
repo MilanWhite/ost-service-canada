@@ -13,7 +13,7 @@ export default function BottomNavbar({ navigation }: Props) {
     return (
         <header className="z-1">
             <nav
-                aria-label="Global"
+                aria-label={t("Common.global_navigation")}
                 className="mx-auto flex max-w-7xl items-center justify-between p-1 lg:px-8"
             >
                 <div className="hidden lg:flex lg:gap-x-12">

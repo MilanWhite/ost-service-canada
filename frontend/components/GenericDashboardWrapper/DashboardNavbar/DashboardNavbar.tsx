@@ -86,7 +86,9 @@ const DashboardNavbar = ({
                     onClick={() => setSidebarOpen(true)}
                     className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
                 >
-                    <span className="sr-only">Open sidebar</span>
+                    <span className="sr-only">
+                        {t("Common.open_sidebar")}
+                    </span>
                     <Bars3Icon aria-hidden="true" className="size-6" />
                 </button>
 

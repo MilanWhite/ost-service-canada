@@ -58,7 +58,7 @@ const MobileSidebar = ({
                                     className="-m-2.5 p-2.5"
                                 >
                                     <span className="sr-only">
-                                        Close sidebar
+                                        {t("Common.close_sidebar")}
                                     </span>
                                     <XMarkIcon
                                         aria-hidden="true"

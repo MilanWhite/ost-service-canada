@@ -308,7 +308,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                     <ErrorBanner>{t(createVehicleError as string)}</ErrorBanner>
                 )}
                 {documentFileError && (
-                    <ErrorBanner>{documentFileError}</ErrorBanner>
+                    <ErrorBanner>{t(documentFileError)}</ErrorBanner>
                 )}
 
                 <div>
@@ -370,7 +370,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                                                     )
                                                 }
                                                 className="shrink-0 rounded-full text-red-600 hover:bg-red-100 hover:text-red-700"
-                                                aria-label={`Remove ${document.label}`}
+                                                aria-label={`${t("AuthenticatedView.remove")} ${document.label}`}
                                             >
                                                 <XMarkIcon className="size-4" />
                                             </button>
@@ -378,7 +378,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                                     )}
                                 </div>
                                 <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary-100 px-3 py-1.5 text-xs font-semibold text-primary shadow-xs hover:bg-primary-100/70">
-                                    Choose file
+                                    {t("AuthenticatedView.choose_file")}
                                     <input
                                         type="file"
                                         accept={DOCUMENT_FILE_ACCEPT}
@@ -392,7 +392,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                                                 !isDocumentFile(file)
                                             ) {
                                                 setDocumentFileError(
-                                                    "Please choose a document file: PDF, Word, Excel, CSV, TXT, RTF, or ODT."
+                                                    "AuthenticatedView.Errors.invalid_document_file"
                                                 );
                                                 event.target.value = "";
                                                 return;
@@ -461,7 +461,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                             htmlFor="modelYear"
                             className="block text-sm/6 font-semibold text-gray-900"
                         >
-                            Year
+                            {t("AuthenticatedView.year")}
                         </label>
                         <input
                             id="modelYear"
@@ -479,7 +479,7 @@ const CreateVehicleForm = ({ user, vehicleRefetch }: Props) => {
                             htmlFor="make"
                             className="block text-sm/6 font-semibold text-gray-900"
                         >
-                            Make
+                            {t("AuthenticatedView.make")}
                         </label>
                         <input
                             id="make"

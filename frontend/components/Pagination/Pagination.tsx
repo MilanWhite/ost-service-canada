@@ -30,7 +30,7 @@ const Pagination: React.FC<Props> = ({ meta, setPage }) => {
     return (
         <nav
             className="flex items-center justify-between border-t border-gray-200 px-4 sm:px-0"
-            aria-label="Pagination"
+            aria-label={t("Common.pagination")}
         >
             {/* Previous */}
             <div className="-mt-px flex w-0 flex-1">

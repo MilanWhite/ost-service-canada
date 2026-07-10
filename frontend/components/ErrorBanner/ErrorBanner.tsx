@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { XCircleIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     children: ReactNode;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 const ErrorBanner = ({ children, className = "mt-5 mb-4" }: Props) => {
+    const { t } = useTranslation();
     const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
@@ -40,7 +42,9 @@ const ErrorBanner = ({ children, className = "mt-5 mb-4" }: Props) => {
                             className="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50 focus:outline-hidden"
                             onClick={() => setIsVisible(false)}
                         >
-                            <span className="sr-only">Dismiss</span>
+                            <span className="sr-only">
+                                {t("Common.dismiss")}
+                            </span>
                             <XMarkIcon aria-hidden="true" className="size-5" />
                         </button>
                     </div>

@@ -274,6 +274,9 @@ i18n.use(LanguageDetector)
                         cancel: "Cancel",
                         invite_user: "Invite User",
                         inviting_loading: "Inviting...",
+                        create_user: "Create User",
+                        creating_loading: "Creating...",
+                        set_permanent_password: "Set Permanent Password",
                         invite_user_description:
                             "A temporary password will be sent to the email you provide, and the user can set up their account.",
                         resend_email: "Resend email",
@@ -718,6 +721,9 @@ i18n.use(LanguageDetector)
                         cancel: "Отмена",
                         invite_user: "Пригласить пользователя",
                         inviting_loading: "Приглашение...",
+                        create_user: "Создать пользователя",
+                        creating_loading: "Создание...",
+                        set_permanent_password: "Задать постоянный пароль",
                         invite_user_description:
                             "Временный пароль будет отправлен на указанный email. Пользователь сможет настроить свой аккаунт.",
                         resend_email: "Отправить email повторно",
@@ -1163,6 +1169,9 @@ i18n.use(LanguageDetector)
                         cancel: "Скасувати",
                         invite_user: "Запросити користувача",
                         inviting_loading: "Надсилаємо запрошення...",
+                        create_user: "Створити користувача",
+                        creating_loading: "Створюємо...",
+                        set_permanent_password: "Встановити постійний пароль",
                         invite_user_description:
                             "Тимчасовий пароль буде надіслано на вказану електронну пошту. Користувач зможе налаштувати свій акаунт.",
                         resend_email: "Надіслати email повторно",

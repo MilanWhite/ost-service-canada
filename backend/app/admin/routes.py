@@ -41,6 +41,21 @@ VIN_VALIDATION_ERROR = (
     "VIN must contain exactly 17 letters or digits; I, O, and Q are not allowed"
 )
 VIN_DUPLICATE_ERROR = "There is already a vehicle with this VIN"
+PASSWORD_RULES_ERROR = (
+    "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+)
+
+
+def is_valid_password(password):
+    return (
+        len(password) >= 8
+        and re.search(r"[0-9]", password)
+        and re.search(r"[A-Z]", password)
+        and re.search(r"[a-z]", password)
+        and re.search(r"[^A-Za-z0-9]", password)
+    )
+
+
 IMAGE_EXTENSIONS = {
     ".png",
     ".jpg",
@@ -401,17 +416,33 @@ def admin_create_user():
         username = request.form.get("username")
         email = request.form.get("email")
         phone_number = request.form.get("phoneNumber")
+        password = request.form.get("password") or None
+
+        if password and not is_valid_password(password):
+            return error_response(PASSWORD_RULES_ERROR, 400)
 
         attrs = [
             {"Name": "email_verified", "Value": "True"},
         ]
 
-        resp = cognito_client.admin_create_user(
-            UserPoolId=Config.USER_POOL_ID,
-            Username=email,
-            UserAttributes=attrs,
-            DesiredDeliveryMediums=["EMAIL"]
-        )
+        create_user_kwargs = {
+            "UserPoolId": Config.USER_POOL_ID,
+            "Username": email,
+            "UserAttributes": attrs,
+            "DesiredDeliveryMediums": ["EMAIL"],
+        }
+        if password:
+            create_user_kwargs["MessageAction"] = "SUPPRESS"
+
+        resp = cognito_client.admin_create_user(**create_user_kwargs)
+
+        if password:
+            cognito_client.admin_set_user_password(
+                UserPoolId=Config.USER_POOL_ID,
+                Username=email,
+                Password=password,
+                Permanent=True,
+            )
 
         cognito_client.admin_add_user_to_group(
             UserPoolId=Config.USER_POOL_ID,

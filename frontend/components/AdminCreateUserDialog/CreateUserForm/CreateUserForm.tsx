@@ -11,16 +11,52 @@ import ErrorText from "../../ErrorText";
 import { useCreateUser } from "../../../contexts/CreateUserContext";
 import { useTranslation } from "react-i18next";
 
+const passwordSchema = z.string().superRefine((password, ctx) => {
+    if (!password) return;
+
+    if (password.length < 8) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Auth.error_password_min_chars",
+        });
+    }
+    if (!/[0-9]/.test(password)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Auth.error_password_number",
+        });
+    }
+    if (!/[A-Z]/.test(password)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Auth.error_password_uppercase",
+        });
+    }
+    if (!/[a-z]/.test(password)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Auth.error_password_lowercase",
+        });
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Auth.error_password_special_char",
+        });
+    }
+});
+
 const schema = z.object({
     username: z
         .string()
         .trim()
-        .min(1, { message: "AuthenticatedView.Error.username_required" }),
+        .min(1, { message: "AuthenticatedView.Errors.username_required" }),
     email: z
         .string()
         .trim()
-        .email({ message: "AuthenticatedView.Error.invalid_email_address" }), // Zod’s .email() enforces standard email formatting :contentReference[oaicite:1]{index=1}
+        .email({ message: "AuthenticatedView.Errors.invalid_email_address" }),
     phoneNumber: z.string().trim(),
+    password: passwordSchema,
 });
 
 type FormData = z.infer<typeof schema>;
@@ -42,6 +78,7 @@ const CreateUserForm = ({ getAllUsersRefetch }: Props) => {
             username: data.username,
             email: data.email,
             phoneNumber: data.phoneNumber,
+            password: data.password || undefined,
         };
         await createUser(createUserInfo, getAllUsersRefetch);
     };
@@ -49,10 +86,22 @@ const CreateUserForm = ({ getAllUsersRefetch }: Props) => {
     const {
         register,
         handleSubmit,
+        watch,
         formState: { errors },
     } = useForm<FormData>({
         resolver: zodResolver(schema),
+        defaultValues: {
+            password: "",
+        },
     });
+
+    const password = watch("password", "");
+    const isPasswordMode = password.length > 0;
+    const lengthValid = password.length >= 8;
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
 
     return (
         <>
@@ -129,6 +178,80 @@ const CreateUserForm = ({ getAllUsersRefetch }: Props) => {
                                 />
                             </div>
                         </div>
+
+                        <details className="sm:col-span-2 mt-3 rounded-md border bg-gray-50 border-gray-200 px-3.5 py-3">
+                            <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                                {t("AuthenticatedView.set_permanent_password")}
+                            </summary>
+                            <div className="mt-3">
+                                <label
+                                    htmlFor="password"
+                                    className="block text-sm/6 font-semibold text-gray-900"
+                                >
+                                    {t("Auth.new_password_label")}
+                                </label>
+                                <div className="mt-2.5">
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-primary"
+                                        {...register("password")}
+                                    />
+                                    <div className="mt-2 space-y-1 text-xs">
+                                        <p
+                                            className={
+                                                lengthValid
+                                                    ? "text-green-600"
+                                                    : "text-gray-500"
+                                            }
+                                        >
+                                            &bull; {t("Auth.password_min_chars")}
+                                        </p>
+                                        <p
+                                            className={
+                                                hasLowercase
+                                                    ? "text-green-600"
+                                                    : "text-gray-500"
+                                            }
+                                        >
+                                            &bull; {t("Auth.password_lowercase")}
+                                        </p>
+                                        <p
+                                            className={
+                                                hasUppercase
+                                                    ? "text-green-600"
+                                                    : "text-gray-500"
+                                            }
+                                        >
+                                            &bull; {t("Auth.password_uppercase")}
+                                        </p>
+                                        <p
+                                            className={
+                                                hasNumber
+                                                    ? "text-green-600"
+                                                    : "text-gray-500"
+                                            }
+                                        >
+                                            &bull; {t("Auth.password_number")}
+                                        </p>
+                                        <p
+                                            className={
+                                                hasSpecial
+                                                    ? "text-green-600"
+                                                    : "text-gray-500"
+                                            }
+                                        >
+                                            &bull; {t("Auth.password_special_char")}
+                                        </p>
+                                    </div>
+                                    <ErrorText>
+                                        {errors.password &&
+                                            t(errors.password.message as string)}
+                                    </ErrorText>
+                                </div>
+                            </div>
+                        </details>
                     </div>
                 </div>
 
@@ -140,8 +263,12 @@ const CreateUserForm = ({ getAllUsersRefetch }: Props) => {
                         className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-hover disabled:opacity-75 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                     >
                         {isCreateUserLoading
-                            ? t("AuthenticatedView.inviting_loading")
-                            : t("AuthenticatedView.invite_user")}
+                            ? isPasswordMode
+                                ? t("AuthenticatedView.creating_loading")
+                                : t("AuthenticatedView.inviting_loading")
+                            : isPasswordMode
+                              ? t("AuthenticatedView.create_user")
+                              : t("AuthenticatedView.invite_user")}
                     </button>
 
                     <button

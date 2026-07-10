@@ -9,6 +9,7 @@ export interface CreateUserInfo {
     username: string;
     email: string;
     phoneNumber: string;
+    password?: string;
 }
 
 const useCreateUserForm = () => {
@@ -25,6 +26,9 @@ const useCreateUserForm = () => {
             formData.append("username", createUserInfo.username)
             formData.append("email", createUserInfo.email)
             formData.append("phoneNumber", createUserInfo.phoneNumber)
+            if (createUserInfo.password) {
+                formData.append("password", createUserInfo.password)
+            }
 
             setCreateUserLoading(true)
             await apiClient.post("/api/admin/users/create-user", formData, {});

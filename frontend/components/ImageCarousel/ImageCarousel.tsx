@@ -172,7 +172,7 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
             <Dialog
                 open={isCarouselFullscreen}
                 onClose={closeFullscreen}
-                className="fixed inset-0 z-50 flex items-center justify-center"
+                className="fixed inset-0 z-[80] flex items-center justify-center"
             >
                 <DialogBackdrop
                     transition

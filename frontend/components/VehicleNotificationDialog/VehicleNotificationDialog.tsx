@@ -53,6 +53,8 @@ const VehicleNotificationDialog = ({
           ? "AuthenticatedView.notification_dialog_delivery_title"
           : "AuthenticatedView.notification_dialog_bol_title";
 
+    if (!isOpen) return null;
+
     return (
         <Dialog open={isOpen} onClose={isLoading ? () => undefined : onClose} className="relative z-60">
             <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />

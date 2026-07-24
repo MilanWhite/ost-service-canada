@@ -6,7 +6,12 @@ import { useEditVehicle } from "../../hooks/useEditVehicle";
 import { translateStatus, Vehicle } from "../../hooks/interfaces";
 import { URLS } from "../../src/config/navigation";
 import ErrorBanner from "../ErrorBanner";
+import SuccessBanner from "../SuccessBanner";
 import VehicleThumbnail from "../VehicleThumbnail";
+import VehicleNotificationDialog, {
+    VehicleNotificationOptions,
+} from "../VehicleNotificationDialog";
+import { useState } from "react";
 
 interface Props {
     vehicle: Vehicle;
@@ -36,10 +41,44 @@ const AdminVehicleItemCard = ({ vehicle: initial, vehicleRefetch }: Props) => {
         handleChange,
         saveChanges,
     } = useEditVehicle(initial, false);
+    const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+    const [notificationRequestId, setNotificationRequestId] = useState<string | null>(null);
+    const [notificationStatus, setNotificationStatus] = useState<"sent" | "failed" | null>(null);
+
+    const deliveryTriggered =
+        initial.shipping_status === "Not delivered" &&
+        vehicle.shipping_status === "Delivered";
 
     const handleSave = async () => {
-        await saveChanges();
-        await vehicleRefetch?.();
+        setNotificationStatus(null);
+        if (deliveryTriggered) {
+            setNotificationRequestId((current) => current ?? crypto.randomUUID());
+            setNotificationDialogOpen(true);
+            return;
+        }
+        try {
+            await saveChanges();
+            await vehicleRefetch?.();
+        } catch {
+            // The edit hook exposes the translated error banner state.
+        }
+    };
+
+    const confirmNotificationSave = async (options: VehicleNotificationOptions) => {
+        if (!notificationRequestId) return;
+        try {
+            const status = await saveChanges({
+                notificationRequestId,
+                sendNotification: options.sendNotification,
+                hasKeys: options.hasKeys,
+            });
+            setNotificationDialogOpen(false);
+            setNotificationRequestId(null);
+            setNotificationStatus(status === "sent" || status === "failed" ? status : null);
+            await vehicleRefetch?.();
+        } catch {
+            // Keep the stable request ID so an explicit retry cannot duplicate mail.
+        }
     };
 
     const editableVehicleFields: {
@@ -107,8 +146,25 @@ const AdminVehicleItemCard = ({ vehicle: initial, vehicleRefetch }: Props) => {
 
     return (
         <section aria-labelledby="vehicle-heading" className="mt-6">
+            <VehicleNotificationDialog
+                isOpen={notificationDialogOpen}
+                isLoading={isEditVehicleLoading}
+                deliveryTriggered
+                billOfLadingTriggered={false}
+                notificationsEnabled={initial.owner_email_notifications_enabled !== false}
+                onClose={() => setNotificationDialogOpen(false)}
+                onConfirm={confirmNotificationSave}
+            />
             {editVehicleError && (
                 <ErrorBanner>{t(editVehicleError)}</ErrorBanner>
+            )}
+            {notificationStatus === "sent" && (
+                <SuccessBanner onClick={() => setNotificationStatus(null)}>
+                    {t("AuthenticatedView.Success.vehicle_notification_sent")}
+                </SuccessBanner>
+            )}
+            {notificationStatus === "failed" && (
+                <ErrorBanner>{t("AuthenticatedView.Errors.vehicle_notification_failed")}</ErrorBanner>
             )}
 
             <h2 id="vehicle-heading" className="sr-only">

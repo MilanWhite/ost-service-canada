@@ -15,7 +15,17 @@ export interface EditExtras {
     billOfLadingDocument?: File | null;
     swbReleaseDocument?: File | null;
     deleteDocumentTypes?: string[];
+    notificationRequestId?: string;
+    sendNotification?: boolean;
+    hasKeys?: boolean;
 }
+
+export type NotificationStatus =
+    | "sent"
+    | "failed"
+    | "suppressed"
+    | "claimed"
+    | "not_applicable";
 
 export interface EditVehicleHook {
     vehicle: Vehicle;
@@ -28,7 +38,7 @@ export interface EditVehicleHook {
         field: keyof Vehicle
     ): (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 
-    saveChanges(extras?: EditExtras): Promise<void>;
+    saveChanges(extras?: EditExtras): Promise<NotificationStatus>;
 }
 
 export function useEditVehicle(
@@ -36,6 +46,7 @@ export function useEditVehicle(
     onSingularVehiclePage: boolean
 ): EditVehicleHook {
     const [vehicle, setVehicle] = useState<Vehicle>(initial);
+    const [savedVehicle, setSavedVehicle] = useState<Vehicle>(initial);
     const [isEditing, setIsEditing] = useState(false);
     const [isEditVehicleLoading, setIsEditVehicleLoading] = useState(false);
     const [editVehicleError, setEditVehicleError] = useState<string | null>(
@@ -44,9 +55,9 @@ export function useEditVehicle(
 
     const startEditing = useCallback(() => setIsEditing(true), []);
     const cancelEditing = useCallback(() => {
-        setVehicle(initial);
+        setVehicle(savedVehicle);
         setIsEditing(false);
-    }, [initial]);
+    }, [savedVehicle]);
 
     const handleChange = useCallback(
         (field: keyof Vehicle) =>
@@ -108,6 +119,20 @@ export function useEditVehicle(
                     );
                 }
 
+                if (extras?.notificationRequestId) {
+                    form.append(
+                        "notification_request_id",
+                        extras.notificationRequestId
+                    );
+                    form.append(
+                        "send_notification",
+                        String(extras.sendNotification ?? false)
+                    );
+                }
+                if (extras?.hasKeys !== undefined) {
+                    form.append("has_keys", String(extras.hasKeys));
+                }
+
                 const { data } = await apiClient.put(
                     `/api/admin/vehicles/edit/${vehicle.id}/${
                         onSingularVehiclePage ? 1 : 0
@@ -117,10 +142,13 @@ export function useEditVehicle(
                 );
 
                 setVehicle(data.message.vehicle);
+                setSavedVehicle(data.message.vehicle);
                 setIsEditing(false);
                 setEditVehicleError(null);
+                return (data.message.notification?.status ??
+                    "not_applicable") as NotificationStatus;
             } catch (err) {
-                if (err instanceof CanceledError) return;
+                if (err instanceof CanceledError) return "not_applicable";
 
                 const message =
                     isAxiosError(err) && err.response?.status === 409

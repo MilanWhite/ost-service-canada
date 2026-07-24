@@ -28,6 +28,7 @@ interface Props {
     files: File[];
     setFiles: Dispatch<SetStateAction<File[]>>;
     setUploadFiles?: Dispatch<SetStateAction<File[]>>;
+    onRemoveImage?: (file: File) => void;
     thumbnail: File | null;
     setThumbnail: Dispatch<SetStateAction<File | null>>;
     disableThumbnailSelection?: boolean;
@@ -117,6 +118,7 @@ export default function ZipImagePreviewer({
     files,
     setFiles,
     setUploadFiles,
+    onRemoveImage,
     thumbnail,
     setThumbnail,
     disableThumbnailSelection = false,
@@ -295,6 +297,7 @@ export default function ZipImagePreviewer({
         if (item.kind === "image") {
             const previewFile = item.file as PreviewFile;
             const sourceArchiveName = previewFile.sourceArchiveName;
+            onRemoveImage?.(item.file);
             setFiles((prev) => {
                 const next = prev.filter(
                     (x) => getFileKey(x) !== getFileKey(item.file)

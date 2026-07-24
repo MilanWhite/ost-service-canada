@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+    Dispatch,
+    SetStateAction,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { CanceledError } from "axios";
 import {
@@ -11,8 +17,12 @@ import ImageCarousel from "../ImageCarousel";
 import ZipImagePreviewer from "../ZipImagePreviewer";
 import AdminDeleteVehicleDialog from "../AdminDeleteVehicleDialog";
 import ErrorBanner from "../ErrorBanner";
+import SuccessBanner from "../SuccessBanner";
 import VehicleThumbnail from "../VehicleThumbnail";
 import DownloadImagesButton from "../DownloadImagesButton";
+import VehicleNotificationDialog, {
+    VehicleNotificationOptions,
+} from "../VehicleNotificationDialog";
 
 import { useEditVehicle } from "../../hooks/useEditVehicle";
 import { translateStatus, Vehicle } from "../../hooks/interfaces";
@@ -43,6 +53,10 @@ interface FieldConfig {
     type?: string;
 }
 
+type ExistingImageFile = File & {
+    existingImageUrl?: string;
+};
+
 const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     const { t, i18n } = useTranslation();
 
@@ -59,6 +73,8 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
 
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [uploadImageFiles, setUploadImageFiles] = useState<File[]>([]);
+    const [deleteImageKeys, setDeleteImageKeys] = useState<string[]>([]);
+    const [imagesDirty, setImagesDirty] = useState(false);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [documentFiles, setDocumentFiles] = useState({
         billOfSaleDocument: null as File | null,
@@ -69,6 +85,12 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
     const [deleteDocumentTypes, setDeleteDocumentTypes] = useState<string[]>(
         []
     );
+    const [baselineShippingStatus, setBaselineShippingStatus] = useState(
+        initial.shipping_status
+    );
+    const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+    const [notificationRequestId, setNotificationRequestId] = useState<string | null>(null);
+    const [notificationStatus, setNotificationStatus] = useState<"sent" | "failed" | null>(null);
     const normName = (u: string) =>
         decodeURIComponent(u.split("/").pop()!.split("?")[0]);
     const existingImageItems = useMemo(
@@ -102,14 +124,17 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                     const res = await fetch(item.original);
                     if (!res.ok) return null;
                     const blob = await res.blob();
-                    return new File([blob], item.filename, { type: blob.type });
+                    return Object.assign(
+                        new File([blob], item.filename, { type: blob.type }),
+                        { existingImageUrl: item.original }
+                    );
                 } catch {
                     return null;
                 }
             });
 
             const files = (await Promise.all(filePromises)).filter(
-                (f): f is File => f !== null
+                (file) => file !== null
             );
 
             if (!cancelled) {
@@ -123,47 +148,80 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
         };
     }, [existingImageItems]);
 
-    const { toAdd, toDelete } = useMemo(() => {
+    const toAdd = useMemo(() => {
         const originalNames = new Set(
             existingImageItems.map((item) => item.filename)
         );
 
-        const add = imageFiles.filter(
+        return imageFiles.filter(
             (f) => !originalNames.has(normName(f.name))
         );
-
-        const del = existingImageItems
-            .filter(
-                (item) =>
-                    !imageFiles.some(
-                        (file) => item.filename === normName(file.name)
-                    )
-            )
-            .map((item) => item.original);
-
-        return { toAdd: add, toDelete: del };
     }, [existingImageItems, imageFiles]);
+
+    const setEditedImageFiles: Dispatch<SetStateAction<File[]>> = (value) => {
+        setImagesDirty(true);
+        setImageFiles(value);
+    };
+
+    const handleRemoveImage = (file: File) => {
+        const existingImageUrl = (file as ExistingImageFile).existingImageUrl;
+        if (!existingImageUrl) return;
+
+        setDeleteImageKeys((current) =>
+            current.includes(existingImageUrl)
+                ? current
+                : [...current, existingImageUrl]
+        );
+    };
 
     const [saveError, setSaveError] = useState<string | null>(null);
     const [documentFileError, setDocumentFileError] = useState<string | null>(
         null
     );
 
-    const handleSave = async () => {
+    const deliveryTriggered =
+        baselineShippingStatus === "Not delivered" &&
+        vehicle.shipping_status === "Delivered";
+    const billOfLadingTriggered = documentFiles.billOfLadingDocument !== null;
+
+    const performSave = async (notificationOptions?: VehicleNotificationOptions) => {
         setSaveError(null);
+        setNotificationStatus(null);
 
         try {
-            await saveChanges({
+            const status = await saveChanges({
                 newImages:
                     uploadImageFiles.length > 0 ? uploadImageFiles : toAdd,
-                deleteKeys: toDelete,
+                deleteKeys: deleteImageKeys,
                 newThumbnail: thumbnail,
-                imageOrder: imageFiles.map((imageFile) => imageFile.name),
+                imageOrder: imagesDirty
+                    ? imageFiles.map((imageFile) => imageFile.name)
+                    : undefined,
                 deleteDocumentTypes,
                 ...documentFiles,
+                ...(notificationRequestId
+                    ? {
+                          notificationRequestId,
+                          sendNotification:
+                              notificationOptions?.sendNotification ?? false,
+                          hasKeys: notificationOptions?.hasKeys,
+                      }
+                    : {}),
             });
-
-            window.location.reload();
+            setBaselineShippingStatus(vehicle.shipping_status);
+            setDocumentFiles({
+                billOfSaleDocument: null,
+                titleDocument: null,
+                billOfLadingDocument: null,
+                swbReleaseDocument: null,
+            });
+            setDeleteDocumentTypes([]);
+            setDeleteImageKeys([]);
+            setImagesDirty(false);
+            setThumbnail(null);
+            setNotificationDialogOpen(false);
+            setNotificationRequestId(null);
+            setNotificationStatus(status === "sent" || status === "failed" ? status : null);
         } catch (err) {
             if (err instanceof CanceledError) return;
 
@@ -173,6 +231,31 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                     : "AuthenticatedView.Errors.failed_to_edit_vehicle"
             );
         }
+    };
+
+    const handleSave = async () => {
+        if (deliveryTriggered || billOfLadingTriggered) {
+            setNotificationRequestId((current) => current ?? crypto.randomUUID());
+            setNotificationDialogOpen(true);
+            return;
+        }
+        await performSave();
+    };
+
+    const handleCancelEditing = () => {
+        cancelEditing();
+        setDocumentFiles({
+            billOfSaleDocument: null,
+            titleDocument: null,
+            billOfLadingDocument: null,
+            swbReleaseDocument: null,
+        });
+        setDeleteDocumentTypes([]);
+        setDeleteImageKeys([]);
+        setImagesDirty(false);
+        setThumbnail(null);
+        setNotificationRequestId(null);
+        setNotificationDialogOpen(false);
     };
 
     const [isDeleteVehicleDialogOpen, setDeleteVehicleDialogOpen] =
@@ -324,6 +407,15 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
 
     return (
         <>
+            <VehicleNotificationDialog
+                isOpen={notificationDialogOpen}
+                isLoading={isEditVehicleLoading}
+                deliveryTriggered={deliveryTriggered}
+                billOfLadingTriggered={billOfLadingTriggered}
+                notificationsEnabled={initial.owner_email_notifications_enabled !== false}
+                onClose={() => setNotificationDialogOpen(false)}
+                onConfirm={performSave}
+            />
             {(editVehicleError || saveError || documentFileError) && (
                 <ErrorBanner>
                     {t(
@@ -332,6 +424,14 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                             saveError) as string
                     )}
                 </ErrorBanner>
+            )}
+            {notificationStatus === "sent" && (
+                <SuccessBanner onClick={() => setNotificationStatus(null)}>
+                    {t("AuthenticatedView.Success.vehicle_notification_sent")}
+                </SuccessBanner>
+            )}
+            {notificationStatus === "failed" && (
+                <ErrorBanner>{t("AuthenticatedView.Errors.vehicle_notification_failed")}</ErrorBanner>
             )}
 
             <AdminDeleteVehicleDialog
@@ -390,7 +490,7 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                                 : t("AuthenticatedView.save")}
                                         </button>
                                         <button
-                                            onClick={cancelEditing}
+                                            onClick={handleCancelEditing}
                                             disabled={isEditVehicleLoading}
                                             className="inline-flex cursor-pointer justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-75"
                                         >
@@ -608,10 +708,11 @@ const AdminVehiclePage = ({ vehicle: initial }: Props) => {
                                     <div className="mt-4 border-t border-gray-200 pt-4">
                                         <ZipImagePreviewer
                                             files={imageFiles}
-                                            setFiles={setImageFiles}
+                                            setFiles={setEditedImageFiles}
                                             setUploadFiles={
                                                 setUploadImageFiles
                                             }
+                                            onRemoveImage={handleRemoveImage}
                                             thumbnail={thumbnail}
                                             setThumbnail={setThumbnail}
                                             preferredThumbnailName={

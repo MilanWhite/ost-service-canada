@@ -5,6 +5,8 @@ export interface User {
     phone_number: string;
     cognito_status?: string | null;
     cognito_enabled?: boolean;
+    email_notifications_enabled: boolean;
+    notification_language: "en" | "ru" | "uk";
 }
 
 export interface VehicleImageItem {
@@ -32,6 +34,8 @@ export interface Vehicle {
     port_of_destination: string | null;
     delivery_address: string | null;
     receiver_id: string | null;
+    has_keys: boolean | null;
+    owner_email_notifications_enabled: boolean;
 
     vin: string;
     model_year: string | null;

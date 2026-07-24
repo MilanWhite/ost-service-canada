@@ -1481,4 +1481,78 @@ i18n.use(LanguageDetector)
 
 i18n.on("languageChanged", syncDocumentLanguage);
 
+const vehicleNotificationTranslations = {
+    en: {
+        Common: { yes: "Yes", no: "No" },
+        AuthenticatedView: {
+            email_notifications: "Email notifications",
+            notification_dialog_delivery_title: "Confirm vehicle delivery",
+            notification_dialog_bol_title: "Confirm bill of lading update",
+            notification_dialog_combined_title: "Confirm delivery and document update",
+            notification_dialog_bol_description:
+                "The new bill of lading will replace the current document when you save.",
+            vehicle_has_keys_question: "Does the vehicle have keys?",
+            send_vehicle_notification: "Send email?",
+            client_notifications_disabled:
+                "This client has disabled email notifications.",
+            confirm_and_save: "Confirm and save",
+            Success: { vehicle_notification_sent: "Vehicle notification email sent successfully." },
+            Errors: {
+                vehicle_notification_failed:
+                    "The vehicle was saved, but the notification email could not be sent.",
+                notification_preferences_failed:
+                    "Could not update email notification preferences.",
+            },
+        },
+    },
+    ru: {
+        Common: { yes: "Да", no: "Нет" },
+        AuthenticatedView: {
+            email_notifications: "Уведомления по электронной почте",
+            notification_dialog_delivery_title: "Подтвердите доставку автомобиля",
+            notification_dialog_bol_title: "Подтвердите обновление коносамента",
+            notification_dialog_combined_title: "Подтвердите доставку и обновление документа",
+            notification_dialog_bol_description:
+                "Новый коносамент заменит текущий документ после сохранения.",
+            vehicle_has_keys_question: "Есть ли у автомобиля ключи?",
+            send_vehicle_notification: "Отправить email?",
+            client_notifications_disabled: "Клиент отключил уведомления по электронной почте.",
+            confirm_and_save: "Подтвердить и сохранить",
+            Success: { vehicle_notification_sent: "Уведомление об автомобиле успешно отправлено." },
+            Errors: {
+                vehicle_notification_failed:
+                    "Автомобиль сохранён, но уведомление не удалось отправить.",
+                notification_preferences_failed:
+                    "Не удалось обновить настройки уведомлений.",
+            },
+        },
+    },
+    uk: {
+        Common: { yes: "Так", no: "Ні" },
+        AuthenticatedView: {
+            email_notifications: "Сповіщення електронною поштою",
+            notification_dialog_delivery_title: "Підтвердьте доставку автомобіля",
+            notification_dialog_bol_title: "Підтвердьте оновлення коносамента",
+            notification_dialog_combined_title: "Підтвердьте доставку та оновлення документа",
+            notification_dialog_bol_description:
+                "Новий коносамент замінить поточний документ після збереження.",
+            vehicle_has_keys_question: "Чи має автомобіль ключі?",
+            send_vehicle_notification: "Надіслати email?",
+            client_notifications_disabled: "Клієнт вимкнув сповіщення електронною поштою.",
+            confirm_and_save: "Підтвердити та зберегти",
+            Success: { vehicle_notification_sent: "Сповіщення про автомобіль успішно надіслано." },
+            Errors: {
+                vehicle_notification_failed:
+                    "Автомобіль збережено, але сповіщення не вдалося надіслати.",
+                notification_preferences_failed:
+                    "Не вдалося оновити налаштування сповіщень.",
+            },
+        },
+    },
+} as const;
+
+Object.entries(vehicleNotificationTranslations).forEach(([language, resources]) => {
+    i18n.addResourceBundle(language, "translation", resources, true, true);
+});
+
 export default i18n;

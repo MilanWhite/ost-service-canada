@@ -26,8 +26,12 @@ from app.media import (
 from app.utils import success_response, error_response
 from app.cognito import cognito_client, s3_client
 from app.config import Config
-from app.models import User, Vehicle
+from app.models import User, Vehicle, VehicleNotificationAttempt
 from app.extensions import db
+from app.services.vehicle_notification_service import (
+    mark_attempt_completed,
+    send_vehicle_notification,
+)
 from sqlalchemy.exc import IntegrityError
 from vpic import Client
 
@@ -563,6 +567,8 @@ def admin_get_all_users():
                 "username":  u.name,
                 "email": u.email,
                 "phone_number": u.phone_number,
+                "email_notifications_enabled": u.email_notifications_enabled,
+                "notification_language": u.notification_language,
                 "cognito_status": cognito_statuses.get(
                     u.cognito_sub, {}
                 ).get("status"),
@@ -592,6 +598,8 @@ def admin_get_specific_user(sub):
             "username":      user.name,
             "email":         user.email,
             "phone_number":  user.phone_number,
+            "email_notifications_enabled": user.email_notifications_enabled,
+            "notification_language": user.notification_language,
         }
 
         return success_response({"user": user_data})
@@ -632,6 +640,8 @@ def admin_search_vehicle_by_vin():
 def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
     s3_transaction = S3UploadTransaction()
     transaction_committed = False
+    notification_attempt = None
+    notification_result = {"status": "not_applicable"}
     try:
         raw_payload = request.form.get("payload")
         if raw_payload is None:
@@ -689,7 +699,12 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
         if "modelYear" in payload and "model_year" not in payload:
             payload["model_year"] = payload["modelYear"]
 
-        vehicle = Vehicle.query.get_or_404(vehicle_id)
+        vehicle = (
+            Vehicle.query.filter_by(id=vehicle_id)
+            .with_for_update()
+            .first_or_404()
+        )
+        previous_shipping_status = vehicle.shipping_status
         updates = {}
         for field, cast in allowed.items():
             if field in payload:
@@ -697,6 +712,49 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
 
         if "vin" in updates:
             ensure_unique_vin(updates["vin"], vehicle_id=vehicle.id)
+
+        delivery_triggered = (
+            previous_shipping_status == "Not delivered"
+            and updates.get("shipping_status") == "Delivered"
+        )
+        bill_of_lading_triggered = bill_of_lading_document is not None
+        notification_triggered = delivery_triggered or bill_of_lading_triggered
+
+        if notification_triggered:
+            notification_request_id = (request.form.get("notification_request_id") or "").strip()
+            if not notification_request_id or len(notification_request_id) > 64:
+                raise ValueError("A valid notification_request_id is required")
+
+            if delivery_triggered:
+                raw_has_keys = (request.form.get("has_keys") or "").lower()
+                if raw_has_keys not in {"true", "false"}:
+                    raise ValueError("has_keys must be true or false for a delivery change")
+                vehicle.has_keys = raw_has_keys == "true"
+
+            existing_attempt = VehicleNotificationAttempt.query.filter_by(
+                request_id=notification_request_id
+            ).first()
+            requested_send = (request.form.get("send_notification") or "false").lower() == "true"
+            if existing_attempt:
+                notification_result = {"status": existing_attempt.status}
+            elif not requested_send or not vehicle.owner.email_notifications_enabled:
+                notification_result = {"status": "suppressed"}
+            else:
+                event_type = (
+                    "delivery_and_bill_of_lading"
+                    if delivery_triggered and bill_of_lading_triggered
+                    else "delivery" if delivery_triggered else "bill_of_lading"
+                )
+                notification_attempt = VehicleNotificationAttempt(
+                    vehicle=vehicle,
+                    request_id=notification_request_id,
+                    event_type=event_type,
+                    recipient_email=vehicle.owner.email,
+                    language=vehicle.owner.notification_language,
+                    status="claimed",
+                )
+                db.session.add(notification_attempt)
+                notification_result = {"status": "claimed"}
 
         for field, value in updates.items():
             setattr(vehicle, field, value)
@@ -749,13 +807,41 @@ def admin_edit_vehicle_with_images(vehicle_id, on_singular_vehicle_page):
             "superseded vehicle media objects",
         )
 
+        if notification_attempt is not None:
+            try:
+                provider_message_id = send_vehicle_notification(notification_attempt)
+                mark_attempt_completed(
+                    notification_attempt,
+                    status="sent",
+                    provider_message_id=provider_message_id,
+                )
+                db.session.commit()
+                notification_result = {"status": "sent"}
+            except Exception as notification_error:
+                current_app.logger.error(
+                    "Vehicle notification failed vehicle_id=%s request_id=%s error_type=%s",
+                    vehicle_id,
+                    notification_attempt.request_id,
+                    type(notification_error).__name__,
+                )
+                mark_attempt_completed(
+                    notification_attempt,
+                    status="failed",
+                    error_summary=type(notification_error).__name__,
+                )
+                db.session.commit()
+                notification_result = {"status": "failed"}
+
         vehicle = Vehicle.query.get_or_404(vehicle_id)
         v_dict = build_vehicle_response(
             vehicle,
             include_images=bool(on_singular_vehicle_page),
             include_videos=bool(on_singular_vehicle_page),
         )
-        return success_response({"vehicle": v_dict})
+        return success_response({
+            "vehicle": v_dict,
+            "notification": notification_result,
+        })
 
     except DuplicateVinError as e:
         db.session.rollback()

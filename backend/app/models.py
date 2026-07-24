@@ -7,6 +7,10 @@ class User(db.Model):
     __tablename__ = "users"
     __table_args__ = (
         db.Index("ix_users_created_at", "created_at"),
+        CheckConstraint(
+            "notification_language IN ('en', 'ru', 'uk')",
+            name="ck_users_notification_language",
+        ),
     )
 
     cognito_sub  = db.Column(db.String(255), primary_key=True)
@@ -14,6 +18,12 @@ class User(db.Model):
     name         = db.Column(db.String(255), nullable=False)
     email        = db.Column(db.String(255), nullable=False, unique=True)
     phone_number = db.Column(db.String(20))
+    email_notifications_enabled = db.Column(
+        db.Boolean, nullable=False, default=True, server_default="true"
+    )
+    notification_language = db.Column(
+        db.String(2), nullable=False, default="en", server_default="en"
+    )
     created_at   = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     vehicles = db.relationship(
@@ -29,6 +39,8 @@ class User(db.Model):
             "name":        self.name,
             "email":       self.email,
             "phone_number": self.phone_number,
+            "email_notifications_enabled": self.email_notifications_enabled,
+            "notification_language": self.notification_language,
             "created_at":   self.created_at.isoformat(),
         }
 
@@ -100,6 +112,7 @@ class Vehicle(db.Model):
     eta                 = db.Column(db.Date)
     delivery_address    = db.Column(db.Text)
     receiver_id         = db.Column(db.String(255))
+    has_keys            = db.Column(db.Boolean)
 
     image_order = db.Column(
         ARRAY(TEXT),
@@ -117,6 +130,12 @@ class Vehicle(db.Model):
     )
     media = db.relationship(
         "VehicleMedia",
+        back_populates="vehicle",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    notification_attempts = db.relationship(
+        "VehicleNotificationAttempt",
         back_populates="vehicle",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -149,6 +168,8 @@ class Vehicle(db.Model):
             "eta":                  self.eta.isoformat() if self.eta else None,
             "delivery_address":     self.delivery_address,
             "receiver_id":          self.receiver_id,
+            "has_keys":             self.has_keys,
+            "owner_email_notifications_enabled": self.owner.email_notifications_enabled,
             "image_order":          self.image_order,
         }
 
@@ -222,3 +243,36 @@ class VehicleMedia(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     vehicle = db.relationship("Vehicle", back_populates="media")
+
+
+class VehicleNotificationAttempt(db.Model):
+    __tablename__ = "vehicle_notification_attempts"
+    __table_args__ = (
+        CheckConstraint(
+            "event_type IN ('delivery', 'bill_of_lading', 'delivery_and_bill_of_lading')",
+            name="ck_vehicle_notification_attempts_event_type",
+        ),
+        CheckConstraint(
+            "status IN ('claimed', 'sent', 'failed')",
+            name="ck_vehicle_notification_attempts_status",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vehicles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    request_id = db.Column(db.String(64), nullable=False, unique=True)
+    event_type = db.Column(db.String(40), nullable=False)
+    recipient_email = db.Column(db.String(255), nullable=False)
+    language = db.Column(db.String(2), nullable=False, default="en", server_default="en")
+    status = db.Column(db.String(20), nullable=False, default="claimed", server_default="claimed")
+    provider_message_id = db.Column(db.String(255))
+    error_summary = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    completed_at = db.Column(db.DateTime)
+
+    vehicle = db.relationship("Vehicle", back_populates="notification_attempts")

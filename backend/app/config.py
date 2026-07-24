@@ -26,6 +26,8 @@ class Config:
 
     DEFAULT_USER_GROUP = os.getenv("DEFAULT_USER_GROUP", "Users")
     S3_BUCKET          = os.getenv("S3_BUCKET")
+    SES_FROM_EMAIL     = os.getenv("SES_FROM_EMAIL")
+    PUBLIC_FRONTEND_URL = os.getenv("PUBLIC_FRONTEND_URL")
 
     # Flags
     PAGE_TIMERS_ENABLED = os.getenv("PAGE_TIMERS_ENABLED", "false").lower() in {

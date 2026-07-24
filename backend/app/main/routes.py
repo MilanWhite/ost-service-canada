@@ -1,4 +1,4 @@
-from flask import Blueprint, request, send_file
+from flask import Blueprint, current_app, request, send_file
 from sqlalchemy import String, case, cast, or_
 
 from app.models import User, Vehicle
@@ -14,6 +14,7 @@ from app.utils import success_response, error_response, check_sub
 from app.decorators import cognito_auth_required, time_api_call
 from app.cognito import cognito_client
 from app.config import Config
+from app.extensions import db
 
 main_bp = Blueprint('main', __name__)
 
@@ -128,6 +129,8 @@ def main_get_user(sub):
             "username":      user.name,
             "email":         user.email,
             "phone_number":  user.phone_number,
+            "email_notifications_enabled": user.email_notifications_enabled,
+            "notification_language": user.notification_language,
         }
 
         if "Admin" in request.user["cognito:groups"]:
@@ -173,6 +176,47 @@ def main_get_specific_vehicle(sub,vehicle_id):
 
     except Exception as e:
         print(f"[main_get_user_vehicles] {e}")
+        return error_response(message=str(e), code=500)
+
+
+@main_bp.route("/<string:sub>/notification-preferences", methods=["PUT"])
+@cognito_auth_required(["RegularUser"])
+def main_update_notification_preferences(sub):
+    try:
+        auth_error = check_sub(request.user["cognito:groups"], request.user["sub"], sub)
+        if auth_error:
+            return auth_error
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return error_response(message="Request body must be an object", code=400)
+
+        user = User.query.filter_by(cognito_sub=sub).first()
+        if user is None:
+            return error_response(message="User not found", code=404)
+
+        if "email_notifications_enabled" in payload:
+            enabled = payload["email_notifications_enabled"]
+            if not isinstance(enabled, bool):
+                return error_response(
+                    message="email_notifications_enabled must be a boolean", code=400
+                )
+            user.email_notifications_enabled = enabled
+
+        if "notification_language" in payload:
+            language = payload["notification_language"]
+            if language not in {"en", "ru", "uk"}:
+                return error_response(message="Unsupported notification language", code=400)
+            user.notification_language = language
+
+        db.session.commit()
+        return success_response({
+            "email_notifications_enabled": user.email_notifications_enabled,
+            "notification_language": user.notification_language,
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("Failed to update notification preferences")
         return error_response(message=str(e), code=500)
 
 

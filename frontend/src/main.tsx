@@ -235,7 +235,7 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")!).render(
     <>
         <Authenticator.Provider>
-            <RouterProvider router={router} />
+            <RouterProvider router={router} useTransitions={false} />
         </Authenticator.Provider>
     </>
 );

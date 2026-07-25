@@ -84,9 +84,9 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
                     </p>
                     <time dateTime={vehicle.created_at}>{dateCreated}</time>
                 </div>
-                <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 lg:grid lg:grid-cols-12 lg:gap-x-4 lg:p-5">
+                <div className="px-4 pt-4 pb-5 sm:px-5 sm:pt-5 sm:pr-36 lg:grid lg:grid-cols-12 lg:gap-x-4 lg:p-5 lg:max-[1081px]:pr-36">
                     {/* LEFT: image + basic info */}
-                    <div className="sm:flex lg:col-span-4">
+                    <div className="sm:flex lg:col-span-4 lg:max-[1388px]:col-span-5 lg:max-[1081px]:col-span-12">
                         <VehicleThumbnail
                             mobileSrc={vehicle.vehicleThumbnailMobile ?? ""}
                             desktopSrc={vehicle.vehicleThumbnail ?? ""}
@@ -95,8 +95,8 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
                             hideMobileFallback
                         />
 
-                        <div className="mt-3 sm:mt-0 sm:ml-5 flex-1">
-                            <h3 className="text-base font-medium text-gray-900">
+                        <div className="mt-3 min-w-0 flex-1 sm:mt-0 sm:ml-5">
+                            <h3 className="break-words text-base font-medium text-gray-900">
                                 <span className="lg:hidden">
                                     {vehicle.vehicle_name}
                                 </span>
@@ -129,10 +129,10 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
                     </div>
 
                     {/* RIGHT: details + actions */}
-                    <div className="mt-5 lg:col-span-8 lg:mt-0 lg:pr-28 xl:pr-36">
+                    <div className="mt-5 max-[1081px]:hidden lg:col-span-8 lg:mt-0 lg:pr-28 lg:max-[1388px]:col-span-7 xl:pr-36">
                         <dl className="grid grid-cols-1 gap-x-6 text-sm">
-                            <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:space-y-0 xl:gap-x-12">
-                                <div className="min-w-0">
+                            <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:space-y-0 lg:max-[1388px]:grid-cols-1 xl:gap-x-12">
+                                <div className="min-w-0 max-[1081px]:hidden lg:max-[1388px]:justify-self-center">
                                     <dt className="font-medium leading-snug text-gray-900">
                                         {t("AuthenticatedView.vehicle_info")}
                                     </dt>
@@ -150,7 +150,7 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
                                         ))}
                                     </dd>
                                 </div>
-                                <div className="block min-w-0 lg:hidden xl:block">
+                                <div className="hidden min-w-0 min-[1388px]:block">
                                     <dt className="font-medium leading-snug text-gray-900">
                                         {t(
                                             "AuthenticatedView.logistics_shipping_details"
@@ -170,7 +170,7 @@ const UserVehicleItemCard = ({ vehicle }: Props) => {
                                         ))}
                                     </dd>
                                 </div>
-                                <div className="min-w-0">
+                                <div className="hidden min-w-0 min-[1388px]:block">
                                     <dt className="font-medium leading-snug text-gray-900">
                                         {t("AuthenticatedView.documents")}
                                     </dt>

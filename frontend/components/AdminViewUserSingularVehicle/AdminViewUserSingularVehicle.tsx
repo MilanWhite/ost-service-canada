@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import AdminVehiclePage from "../../components/AdminVehiclePage";
 
 import { Navigate, useParams } from "react-router-dom";
@@ -25,6 +26,22 @@ const AdminViewUserSingularVehicle = () => {
         vehicle_id ?? "",
     );
     const { user, userError } = useGetUser(sub);
+
+    useLayoutEffect(() => {
+        const resetScroll = () => {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            document.scrollingElement?.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: "auto",
+            });
+        };
+
+        resetScroll();
+        const frame = window.requestAnimationFrame(resetScroll);
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [vehicle_id]);
 
     if (!sub || !vehicle_id) {
         return <Navigate to="/404" replace />;

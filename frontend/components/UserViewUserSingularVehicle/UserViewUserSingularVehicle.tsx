@@ -30,7 +30,19 @@ const UserViewUserSingularVehicle = () => {
     );
 
     useLayoutEffect(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        const resetScroll = () => {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            document.scrollingElement?.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: "auto",
+            });
+        };
+
+        resetScroll();
+        const frame = window.requestAnimationFrame(resetScroll);
+
+        return () => window.cancelAnimationFrame(frame);
     }, [vehicle_id]);
 
     if (!user || !vehicle_id) {

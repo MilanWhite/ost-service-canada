@@ -1,5 +1,5 @@
 import { Menu, MenuItem, MenuItems } from "@headlessui/react";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import React from "react";
 import { DashboardUserNavigation } from "../GenericDashboardWrapper";
 
@@ -15,11 +15,13 @@ import { clearUsersCache } from "../../../hooks/useGetAllUsers";
 
 interface Props {
     dashboardUserNavigation: DashboardUserNavigation[];
+    sidebarOpen: boolean;
     setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const DashboardNavbar = ({
     dashboardUserNavigation,
+    sidebarOpen,
     setSidebarOpen,
 }: Props) => {
 
@@ -83,13 +85,23 @@ const DashboardNavbar = ({
                 <div className="flex bg-blue-500 h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-xs sm:gap-x-6 sm:px-6 lg:hidden">
                 <button
                     type="button"
-                    onClick={() => setSidebarOpen(true)}
+                    onClick={() => setSidebarOpen((open) => !open)}
+                    aria-controls="mobile-dashboard-sidebar"
+                    aria-expanded={sidebarOpen}
                     className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
                 >
                     <span className="sr-only">
-                        {t("Common.open_sidebar")}
+                        {t(
+                            sidebarOpen
+                                ? "Common.close_sidebar"
+                                : "Common.open_sidebar"
+                        )}
                     </span>
-                    <Bars3Icon aria-hidden="true" className="size-6" />
+                    {sidebarOpen ? (
+                        <XMarkIcon aria-hidden="true" className="size-6" />
+                    ) : (
+                        <Bars3Icon aria-hidden="true" className="size-6" />
+                    )}
                 </button>
 
                 {/* Separator */}

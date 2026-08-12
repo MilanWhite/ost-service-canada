@@ -57,7 +57,6 @@ const GenericDashboardWrapper = ({
             <div>
                 {/* MOBILE SIDEBAR  */}
                 <MobileSidebar
-                    homeURL={homeURL}
                     dashboardNavigation={dashboardNavigation}
                     sidebarFooter={sidebarFooter}
                     sidebarOpen={sidebarOpen}
@@ -73,6 +72,7 @@ const GenericDashboardWrapper = ({
                 <div className="lg:relative lg:pl-72">
                     <DashboardNavbar
                         dashboardUserNavigation={dashboardUserNavigation}
+                        sidebarOpen={sidebarOpen}
                         setSidebarOpen={setSidebarOpen}
                     />
                     <main

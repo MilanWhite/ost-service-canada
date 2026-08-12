@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "auth", "types"]
+  "include": ["src", "auth", "types", "components", "hooks", "pages"]
 }

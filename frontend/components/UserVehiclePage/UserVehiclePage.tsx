@@ -99,7 +99,9 @@ const UserVehiclePage = ({ vehicle }: Props) => {
     return (
         <div className="w-full max-w-full overflow-x-hidden bg-white pb-8 sm:overflow-visible">
             <div className="mx-auto w-full max-w-full py-3 sm:max-w-none">
-                <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+                <div className="grid min-w-0 max-w-full items-start gap-5 min-[1281px]:grid-cols-3">
+                    <div className="min-w-0 space-y-5 min-[1281px]:col-span-2 min-[1281px]:max-[1565px]:contents">
+                    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs min-[1281px]:col-span-3">
                     <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[9rem_1fr] lg:items-center">
                         <VehicleThumbnail
                             mobileSrc={bannerMobileThumbnail}
@@ -136,9 +138,7 @@ const UserVehiclePage = ({ vehicle }: Props) => {
                     </div>
                 </section>
 
-                <div className="mt-5 grid min-w-0 max-w-full gap-5 lg:grid-cols-3">
-                    <div className="min-w-0 space-y-5 lg:col-span-2">
-                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs min-[1281px]:col-span-2">
                             <h2 className="text-lg font-semibold text-gray-900">
                                 {t("AuthenticatedView.vehicle_info")}
                             </h2>
@@ -147,7 +147,7 @@ const UserVehiclePage = ({ vehicle }: Props) => {
                             </div>
                         </section>
 
-                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs">
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs min-[1281px]:col-span-2">
                             <h2 className="text-lg font-semibold text-gray-900">
                                 {t("AuthenticatedView.documents")}
                             </h2>
@@ -208,8 +208,8 @@ const UserVehiclePage = ({ vehicle }: Props) => {
                         </section>
                     </div>
 
-                    <aside className="min-w-0 lg:col-span-1">
-                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs lg:sticky lg:top-6">
+                    <aside className="min-w-0 min-[1281px]:max-[1565px]:col-start-3 min-[1281px]:max-[1565px]:row-span-2 min-[1281px]:max-[1565px]:row-start-2">
+                        <section className="w-full min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 shadow-xs min-[1281px]:sticky min-[1281px]:top-6">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <h2 className="text-lg font-semibold text-gray-900">
                                     {t("AuthenticatedView.photos")}

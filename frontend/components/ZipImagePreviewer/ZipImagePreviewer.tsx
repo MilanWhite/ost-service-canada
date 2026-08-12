@@ -35,6 +35,7 @@ interface Props {
     videos?: File[];
     setVideos?: Dispatch<SetStateAction<File[]>>;
     allowVideos?: boolean;
+    maxColumns?: 3 | 5;
 
     preferredThumbnailName?: string;
 }
@@ -125,11 +126,13 @@ export default function ZipImagePreviewer({
     videos = [],
     setVideos,
     allowVideos = false,
+    maxColumns = 3,
     preferredThumbnailName,
 }: Props) {
     const { t } = useTranslation();
 
     const [urlMap, setUrlMap] = useState<Map<string, string>>(new Map());
+    const urlMapRef = useRef<Map<string, string>>(new Map());
     const [isDropActive, setIsDropActive] = useState(false);
     const [dragOverKey, setDragOverKey] = useState<string | null>(null);
     const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -285,13 +288,40 @@ export default function ZipImagePreviewer({
     };
 
     useEffect(() => {
-        const m = new Map<string, string>();
-        mediaItems.forEach(({ file }) =>
-            m.set(getFileKey(file), URL.createObjectURL(file))
+        const urls = urlMapRef.current;
+        const activeKeys = new Set(
+            mediaItems.map(({ file }) => getFileKey(file))
         );
-        setUrlMap(m);
-        return () => m.forEach((u) => URL.revokeObjectURL(u));
+        let changed = false;
+
+        mediaItems.forEach(({ file }) => {
+            const key = getFileKey(file);
+            if (!urls.has(key)) {
+                urls.set(key, URL.createObjectURL(file));
+                changed = true;
+            }
+        });
+
+        urls.forEach((url, key) => {
+            if (!activeKeys.has(key)) {
+                URL.revokeObjectURL(url);
+                urls.delete(key);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            setUrlMap(new Map(urls));
+        }
     }, [mediaItems]);
+
+    useEffect(
+        () => () => {
+            urlMapRef.current.forEach((url) => URL.revokeObjectURL(url));
+            urlMapRef.current.clear();
+        },
+        []
+    );
 
     const removeFile = (item: MediaItem) => {
         if (item.kind === "image") {
@@ -333,8 +363,6 @@ export default function ZipImagePreviewer({
             );
         }
 
-        const url = urlMap.get(getFileKey(item.file));
-        if (url) URL.revokeObjectURL(url);
     };
 
     const reorder = ({ kind, index: from }: DragState, to: number) => {
@@ -434,7 +462,13 @@ export default function ZipImagePreviewer({
 
             {mediaItems.length > 0 && (
                 <div className="relative max-h-[32rem] overflow-y-auto border border-gray-200 rounded-lg p-4 shadow-sm">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div
+                        className={`grid grid-cols-2 gap-4 sm:grid-cols-3 ${
+                            maxColumns === 5
+                                ? "lg:grid-cols-4 xl:grid-cols-5"
+                                : ""
+                        }`}
+                    >
                         {mediaItems.map((item, idx) => {
                             const { file, kind } = item;
                             const itemKey = getFileKey(file);

@@ -1,4 +1,10 @@
-import { useEffect, useState, type MouseEvent, type WheelEvent } from "react";
+import {
+    useEffect,
+    useMemo,
+    useState,
+    type MouseEvent,
+    type WheelEvent,
+} from "react";
 
 interface ImageItem {
     id?: number;
@@ -29,21 +35,26 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
         import.meta.env.VITE_IMAGE_VIEWER_VARIANT !== "bare";
 
     const [isCarouselFullscreen, setIsCarouselFullscreen] = useState(false);
+    const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
 
-    const carouselImages =
-        imageItems && imageItems.length > 0
-            ? imageItems.map((item) => ({
-                  src: item.original,
-                  mobileSrc: item.mobile || item.original,
-                  thumbnailSrc: item.thumbnail || item.mobile || item.original,
-                  filename: item.filename,
-              }))
-            : images.map((image) => ({
-                  src: image,
-                  mobileSrc: image,
-                  thumbnailSrc: image,
-                  filename: undefined,
-              }));
+    const carouselImages = useMemo(
+        () =>
+            imageItems && imageItems.length > 0
+                ? imageItems.map((item) => ({
+                      src: item.original,
+                      mobileSrc: item.mobile || item.original,
+                      thumbnailSrc:
+                          item.thumbnail || item.mobile || item.original,
+                      filename: item.filename,
+                  }))
+                : images.map((image) => ({
+                      src: image,
+                      mobileSrc: image,
+                      thumbnailSrc: image,
+                      filename: undefined,
+                  })),
+        [imageItems, images]
+    );
 
     const total = carouselImages.length + videos.length;
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -64,6 +75,36 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
         }
 
     }, [currentIndex, total]);
+
+    useEffect(() => {
+        if (total === 0) return;
+
+        const useMobileSource = window.matchMedia("(max-width: 640px)").matches;
+        let cancelled = false;
+
+        [-1, 1, 2].forEach((offset) => {
+            const index = (currentIndex + offset + total) % total;
+            const image = carouselImages[index];
+            if (!image) return;
+
+            const preloader = new Image();
+            preloader.onload = () => {
+                if (cancelled) return;
+
+                const ratio = preloader.naturalWidth / preloader.naturalHeight;
+                setImageRatios((current) =>
+                    current[image.src] === ratio
+                        ? current
+                        : { ...current, [image.src]: ratio }
+                );
+            };
+            preloader.src = useMobileSource ? image.mobileSrc : image.src;
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [carouselImages, currentIndex, total]);
 
     if (total === 0) {
         return (
@@ -199,12 +240,20 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
     const renderImage = (className: string, fullscreen = false) => {
         if (!currentImage) return null;
 
+        const imageRatio = imageRatios[currentImage.src];
+        const miniPictureSizeClass =
+            imageRatio === undefined
+                ? "max-h-full max-w-full opacity-0"
+                : imageRatio >= 4 / 3
+                  ? "h-auto w-full max-h-full"
+                  : "h-full w-auto max-w-full";
+
         return (
             <picture
                 className={
                     fullscreen
                         ? "flex items-center justify-center"
-                        : undefined
+                        : `flex overflow-hidden rounded-lg drop-shadow-md ${miniPictureSizeClass}`
                 }
                 style={
                     fullscreen
@@ -223,10 +272,20 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
                 <img
                     src={currentImage.src}
                     alt={`Slide ${currentIndex + 1}`}
+                    onLoad={(event) => {
+                        const image = event.currentTarget;
+                        const ratio = image.naturalWidth / image.naturalHeight;
+
+                        setImageRatios((current) =>
+                            current[currentImage.src] === ratio
+                                ? current
+                                : { ...current, [currentImage.src]: ratio }
+                        );
+                    }}
                     onClick={
                         fullscreen ? handleFullscreenImageClick : undefined
                     }
-                    className={className}
+                    className={fullscreen ? className : "h-full w-full object-cover"}
                 />
             </picture>
         );
@@ -361,7 +420,7 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
             </Dialog>
 
             <div className="flex min-w-0 flex-col items-center space-y-4">
-                <div className="relative aspect-[4/3] w-full min-w-0 overflow-hidden rounded-lg bg-gray-50 p-3">
+                <div className="relative aspect-[4/3] w-full min-w-0 overflow-hidden">
                     <div
                         onClick={() => {
                             setIsCarouselFullscreen(true);
@@ -373,11 +432,11 @@ const ImageCarousel = ({ images, imageItems, videos }: Props) => {
                                 src={src}
                                 controls
                                 autoPlay
-                                className="h-full w-full rounded-lg object-contain drop-shadow-md"
+                                className="max-h-full max-w-full rounded-lg object-contain drop-shadow-md"
                             />
                         ) : (
                             renderImage(
-                                "h-full w-full rounded-lg object-contain drop-shadow-md"
+                                "h-full w-full object-contain"
                             )
                         )}
                     </div>
